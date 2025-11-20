@@ -16,6 +16,10 @@ const useTransaction = create(
                     t.id === index ? { ...t, ...updatedTransaction } : t
                 )
             })),
+            importTransactions: (transactions) => set(() => ({
+                transaction: transactions
+            })),
+            exportTransactions: (state) => state.transaction,
         }),
         {
             name: 'transaction-storage', // unique name for the storage

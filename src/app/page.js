@@ -4,7 +4,7 @@ import { useTransactionStore } from '@/hooks/useTransaction';
 import { CategoryScale, Chart, LinearScale, BarElement, PointElement, LineElement, ArcElement, Tooltip, Legend, BarController, LineController, PieController } from 'chart.js';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiBarChart2, FiPieChart, FiActivity, FiInbox } from 'react-icons/fi';
+import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiBarChart2, FiPieChart, FiActivity, FiInbox, FiDownload, FiUpload } from 'react-icons/fi';
 
 // Register components needed for Bar and Line charts
 Chart.register(
@@ -22,7 +22,7 @@ Chart.register(
 );
 
 const Page = () => {
-  const { transaction, addTransaction, deleteTransaction, updateTransaction } = useTransactionStore();
+  const { transaction, addTransaction, deleteTransaction, updateTransaction, importTransactions } = useTransactionStore();
   const [isOpenModal, setIsOpenModal] = useState(false);
   const [formData, setFormData] = useState({
     description: '',
@@ -100,6 +100,78 @@ const Page = () => {
       setEditId(id);
       toggleModal();
     }
+  }
+
+  const handleExport = () => {
+    if (!transaction || transaction.length === 0) {
+      toast.error("No transactions to export!", {
+        position: "top-center",
+      });
+      return;
+    }
+
+    const dataStr = JSON.stringify(transaction, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `transactions-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success("Transactions exported successfully!", {
+      position: "top-center",
+    });
+  }
+
+  const handleImport = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (file.type !== 'application/json') {
+      toast.error("Please upload a valid JSON file!", {
+        position: "top-center",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importedData = JSON.parse(e.target.result);
+
+        if (!Array.isArray(importedData)) {
+          toast.error("Invalid data format!", {
+            position: "top-center",
+          });
+          return;
+        }
+
+        // Generate new IDs for imported data to avoid conflicts
+        const dataWithNewIds = importedData.map(item => ({
+          ...item,
+          id: Date.now() + Math.floor(Math.random() * 10000)
+        }));
+
+        // Merge with existing transactions
+        const mergedData = [...transaction, ...dataWithNewIds];
+        importTransactions(mergedData);
+
+        toast.success(`${importedData.length} transactions imported successfully!`, {
+          position: "top-center",
+        });
+      } catch (error) {
+        toast.error("Error parsing JSON file!", {
+          position: "top-center",
+        });
+      }
+    };
+    reader.readAsText(file);
+
+    // Reset input
+    event.target.value = '';
   }
 
   // Bar Chart: Income vs Expense per Month (last 12 months)
@@ -518,7 +590,26 @@ const Page = () => {
             <h2 className="text-2xl font-bold text-gray-900 mb-1">Transaction History</h2>
             <p className="text-sm text-gray-500">Manage your financial records</p>
           </div>
-          <button className="text-white cursor-pointer bg-gray-900 hover:bg-gray-800 py-3 px-6 rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg" onClick={toggleModal}>+ Add Transaction</button>
+          <div className="flex gap-3">
+            <button
+              className="text-gray-700 cursor-pointer bg-gray-100 hover:bg-gray-200 py-3 px-5 rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
+              onClick={handleExport}
+            >
+              <FiDownload className="text-lg" />
+              Export
+            </button>
+            <label className="text-gray-700 cursor-pointer bg-gray-100 hover:bg-gray-200 py-3 px-5 rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2">
+              <FiUpload className="text-lg" />
+              Import
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImport}
+                className="hidden"
+              />
+            </label>
+            <button className="text-white cursor-pointer bg-gray-900 hover:bg-gray-800 py-3 px-6 rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg" onClick={toggleModal}>+ Add Transaction</button>
+          </div>
         </div>
 
         {/* Filter Tabs */}
