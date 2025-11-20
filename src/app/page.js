@@ -39,16 +39,15 @@ const Page = () => {
   const categoryChartRef = useRef(null);
 
   const toggleModal = () => {
-    if (editId) {
-      setFormData({
-        description: '',
-        type: 'Pemasukan',
-        category: '',
-        amount: '',
-        date: ''
-      });
-      setEditId(null);
-    }
+    // Always clear form data when closing modal
+    setFormData({
+      description: '',
+      type: 'Pemasukan',
+      category: '',
+      amount: '',
+      date: ''
+    });
+    setEditId(null);
     setIsOpenModal(!isOpenModal);
   };
 
@@ -78,6 +77,17 @@ const Page = () => {
     toast.success(editId ? "Transaction updated successfully!" : "Transaction added successfully!", {
       position: "top-center",
     });
+
+    // Clear form data
+    setFormData({
+      description: '',
+      type: 'Pemasukan',
+      category: '',
+      amount: '',
+      date: ''
+    });
+    setEditId(null);
+
     toggleModal();
   }
 
