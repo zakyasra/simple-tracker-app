@@ -33,6 +33,7 @@ const Page = () => {
   })
   const [editId, setEditId] = useState(null);
   const [filterType, setFilterType] = useState('Semua');
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const barChartRef = useRef(null);
   const lineChartRef = useRef(null);
   const categoryChartRef = useRef(null);
@@ -81,10 +82,21 @@ const Page = () => {
   }
 
   const handleDelete = (id) => {
-    deleteTransaction(id);
-    toast.success("Transaction deleted successfully!", {
-      position: "top-center",
-    });
+    setDeleteConfirmId(id);
+  }
+
+  const confirmDelete = () => {
+    if (deleteConfirmId) {
+      deleteTransaction(deleteConfirmId);
+      toast.success("Transaction deleted successfully!", {
+        position: "top-center",
+      });
+      setDeleteConfirmId(null);
+    }
+  }
+
+  const cancelDelete = () => {
+    setDeleteConfirmId(null);
   }
 
   const handleEdit = (id) => {
@@ -584,23 +596,23 @@ const Page = () => {
           </div>
         </div>
       </div>
-      <div className="mt-8 max-w-7xl md:mx-auto mx-4 bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
-        <div className="flex justify-between items-center mb-6">
+      <div className="mt-8 max-w-7xl md:mx-auto mx-4 bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-gray-100">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-1">Transaction History</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Transaction History</h2>
             <p className="text-sm text-gray-500">Manage your financial records</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2 md:gap-3">
             <button
-              className="text-gray-700 cursor-pointer bg-gray-100 hover:bg-gray-200 py-3 px-5 rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
+              className="text-gray-700 cursor-pointer bg-gray-100 hover:bg-gray-200 py-2.5 md:py-3 px-4 md:px-5 rounded-xl text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
               onClick={handleExport}
             >
-              <FiDownload className="text-lg" />
-              Export
+              <FiDownload className="text-base md:text-lg" />
+              <span className="hidden sm:inline">Export</span>
             </button>
-            <label className="text-gray-700 cursor-pointer bg-gray-100 hover:bg-gray-200 py-3 px-5 rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2">
-              <FiUpload className="text-lg" />
-              Import
+            <label className="text-gray-700 cursor-pointer bg-gray-100 hover:bg-gray-200 py-2.5 md:py-3 px-4 md:px-5 rounded-xl text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2">
+              <FiUpload className="text-base md:text-lg" />
+              <span className="hidden sm:inline">Import</span>
               <input
                 type="file"
                 accept=".json"
@@ -608,7 +620,9 @@ const Page = () => {
                 className="hidden"
               />
             </label>
-            <button className="text-white cursor-pointer bg-gray-900 hover:bg-gray-800 py-3 px-6 rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg" onClick={toggleModal}>+ Add Transaction</button>
+            <button className="text-white cursor-pointer bg-gray-900 hover:bg-gray-800 py-2.5 md:py-3 px-4 md:px-6 rounded-xl text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg flex-1 sm:flex-none" onClick={toggleModal}>
+              <span className="">+ Add Transaction</span>
+            </button>
           </div>
         </div>
 
@@ -787,6 +801,48 @@ const Page = () => {
                   onClick={handleSubmit}
                 >
                   Save Transaction
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50">
+          {/* Overlay */}
+          <div
+            className="absolute inset-0 bg-black opacity-75"
+            onClick={cancelDelete}
+          ></div>
+
+          <div className="relative flex items-center justify-center h-full px-4">
+            <div className="bg-white p-8 rounded-2xl w-full max-w-md shadow-2xl">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Delete Transaction?</h3>
+                <p className="text-gray-500 text-sm">This action cannot be undone. Are you sure you want to delete this transaction?</p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={cancelDelete}
+                  className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-all duration-200 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  className="flex-1 bg-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-red-700 transition-all duration-200 cursor-pointer shadow-lg"
+                >
+                  Delete
                 </button>
               </div>
             </div>
