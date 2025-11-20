@@ -39,15 +39,17 @@ const Page = () => {
   const categoryChartRef = useRef(null);
 
   const toggleModal = () => {
-    // Always clear form data when closing modal
-    setFormData({
-      description: '',
-      type: 'Pemasukan',
-      category: '',
-      amount: '',
-      date: ''
-    });
-    setEditId(null);
+    // Only clear form data when closing modal (not opening for edit)
+    if (isOpenModal) {
+      setFormData({
+        description: '',
+        type: 'Pemasukan',
+        category: '',
+        amount: '',
+        date: ''
+      });
+      setEditId(null);
+    }
     setIsOpenModal(!isOpenModal);
   };
 
@@ -112,6 +114,7 @@ const Page = () => {
   const handleEdit = (id) => {
     const transactionToEdit = transaction.find(item => item.id === id);
     if (transactionToEdit) {
+      setEditId(id);
       setFormData({
         description: transactionToEdit.description,
         type: transactionToEdit.type,
@@ -119,8 +122,7 @@ const Page = () => {
         amount: Math.abs(transactionToEdit.amount).toString(), // Convert to string for input
         date: new Date(transactionToEdit.date).toISOString().split('T')[0] // Format date for input
       });
-      setEditId(id);
-      toggleModal();
+      setIsOpenModal(true);
     }
   }
 
