@@ -485,12 +485,12 @@ const Page = () => {
   }) || [];
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 min-h-screen pt-12 pb-20">
-      <div className="flex justify-center mb-2">
-        <h1 className="text-5xl font-bold text-gray-900 tracking-tight">Tracking Your Money</h1>
+    <div className="bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 min-h-screen pt-8 md:pt-12 pb-20">
+      <div className="max-w-7xl md:mx-auto mx-4 mb-2">
+        <h1 className="text-3xl md:text-5xl font-bold text-gray-900 tracking-tight text-left md:text-center">Tracking Your Money</h1>
       </div>
-      <div className="flex justify-center">
-        <p className="text-gray-500 text-sm">Financial Management Dashboard</p>
+      <div className="max-w-7xl md:mx-auto mx-4">
+        <p className="text-gray-500 text-sm text-left md:text-center">Financial Management Dashboard</p>
       </div>
 
       {/* Financial Summary Cards */}
@@ -627,10 +627,10 @@ const Page = () => {
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 mb-8 bg-gray-50 p-1.5 rounded-xl w-fit border border-gray-200">
+        <div className="flex gap-2 mb-8 bg-gray-50 p-1.5 rounded-xl w-full md:w-fit border border-gray-200">
           <button
             onClick={() => setFilterType('Semua')}
-            className={`px-8 py-3 rounded-lg transition-all duration-200 text-sm font-semibold ${filterType === 'Semua'
+            className={`flex-1 md:flex-none px-4 md:px-8 py-2.5 md:py-3 rounded-lg transition-all duration-200 text-xs md:text-sm font-semibold ${filterType === 'Semua'
               ? 'bg-gray-900 text-white shadow-md'
               : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`}
@@ -639,7 +639,7 @@ const Page = () => {
           </button>
           <button
             onClick={() => setFilterType('Masuk')}
-            className={`px-8 py-3 rounded-lg transition-all duration-200 text-sm font-semibold ${filterType === 'Masuk'
+            className={`flex-1 md:flex-none px-4 md:px-8 py-2.5 md:py-3 rounded-lg transition-all duration-200 text-xs md:text-sm font-semibold ${filterType === 'Masuk'
               ? 'bg-gray-900 text-white shadow-md'
               : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`}
@@ -648,7 +648,7 @@ const Page = () => {
           </button>
           <button
             onClick={() => setFilterType('Keluar')}
-            className={`px-8 py-3 rounded-lg transition-all duration-200 text-sm font-semibold ${filterType === 'Keluar'
+            className={`flex-1 md:flex-none px-4 md:px-8 py-2.5 md:py-3 rounded-lg transition-all duration-200 text-xs md:text-sm font-semibold ${filterType === 'Keluar'
               ? 'bg-gray-900 text-white shadow-md'
               : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
               }`}
