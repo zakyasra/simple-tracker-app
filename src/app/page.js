@@ -1,17 +1,23 @@
 "use client";
 
 import { useTransactionStore } from '@/hooks/useTransaction';
-import { CategoryScale, Chart, LinearScale, ArcElement, Tooltip, Legend, PieController } from 'chart.js';
+import { CategoryScale, Chart, LinearScale, BarElement, PointElement, LineElement, ArcElement, Tooltip, Legend, BarController, LineController, PieController } from 'chart.js';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
+import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiBarChart2, FiPieChart, FiActivity, FiInbox } from 'react-icons/fi';
 
-// Register components needed for Pie chart
+// Register components needed for Bar and Line charts
 Chart.register(
   CategoryScale,
   LinearScale,
+  BarElement,
+  PointElement,
+  LineElement,
   ArcElement,
   Tooltip,
   Legend,
+  BarController,
+  LineController,
   PieController
 );
 
@@ -26,7 +32,10 @@ const Page = () => {
     date: ''
   })
   const [editId, setEditId] = useState(null);
-  const canvasRef = useRef(null);
+  const [filterType, setFilterType] = useState('Semua');
+  const barChartRef = useRef(null);
+  const lineChartRef = useRef(null);
+  const categoryChartRef = useRef(null);
 
   const toggleModal = () => {
     if (editId) {
@@ -93,113 +102,505 @@ const Page = () => {
     }
   }
 
+  // Bar Chart: Income vs Expense per Month (last 12 months)
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!barChartRef.current) return;
 
-    const reducedData = transaction?.reduce((acc, item) => {
-      const existing = acc.find(i => i.category === item.category);
-      if (existing) {
-        existing.amount += item.amount;
-      } else {
-        acc.push({ category: item.category, amount: item.amount });
+    // Get monthly data for the last 12 months
+    const monthlyData = {};
+    const now = new Date();
+
+    transaction?.forEach(item => {
+      const date = new Date(item.date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { income: 0, expense: 0 };
       }
-      return acc; // Ini yang paling penting!
-    }, []); // Inisialisasi dengan array kosong
 
+      if (item.type === 'Pemasukan') {
+        monthlyData[monthKey].income += item.amount;
+      } else {
+        monthlyData[monthKey].expense += Math.abs(item.amount);
+      }
+    });
 
-    const chart = new Chart(
-      canvasRef.current,
-      {
-        type: 'pie',
-        data: {
-          labels: reducedData.length ? reducedData?.map(item => item.category) : ["No Data"],
-          datasets: [{
-            data: reducedData.length ? reducedData?.map(item => item.amount) : [100],
-            backgroundColor: [
-              'rgba(255, 99, 132, 0.7)',
-              'rgba(54, 162, 235, 0.7)',
-              'rgba(255, 206, 86, 0.7)',
-              'rgba(75, 192, 192, 0.7)',
-              'rgba(153, 102, 255, 0.7)',
-              'rgba(255, 159, 64, 0.7)'
-            ],
-            borderColor: [
-              'rgba(255, 99, 132, 1)',
-              'rgba(54, 162, 235, 1)',
-              'rgba(255, 206, 86, 1)',
-              'rgba(75, 192, 192, 1)',
-              'rgba(153, 102, 255, 1)',
-              'rgba(255, 159, 64, 1)'
-            ],
-            borderWidth: 1
-          }]
+    // Sort by date and get labels
+    const sortedMonths = Object.keys(monthlyData).sort();
+    const labels = sortedMonths.map(key => {
+      const [year, month] = key.split('-');
+      const date = new Date(year, month - 1);
+      return date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
+    });
+
+    const incomeData = sortedMonths.map(key => monthlyData[key].income);
+    const expenseData = sortedMonths.map(key => monthlyData[key].expense);
+
+    const chart = new Chart(barChartRef.current, {
+      type: 'bar',
+      data: {
+        labels: labels.length ? labels : ['No Data'],
+        datasets: [
+          {
+            label: 'Pengeluaran',
+            data: expenseData.length ? expenseData : [0],
+            backgroundColor: 'rgba(239, 68, 68, 0.8)',
+            borderColor: 'rgba(239, 68, 68, 1)',
+            borderWidth: 1,
+            borderRadius: 8,
+            borderSkipped: false
+          },
+          {
+            label: 'Pemasukan',
+            data: incomeData.length ? incomeData : [0],
+            backgroundColor: 'rgba(59, 130, 246, 0.8)',
+            borderColor: 'rgba(59, 130, 246, 1)',
+            borderWidth: 1,
+            borderRadius: 8,
+            borderSkipped: false
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+            labels: {
+              usePointStyle: true,
+              padding: 15
+            }
+          }
         },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: {
-              position: 'top',
-            },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              display: true,
+              color: 'rgba(0, 0, 0, 0.05)'
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            }
           }
         }
       }
-    );
+    });
 
-    return () => {
-      chart.destroy();
-    }
+    return () => chart.destroy();
   }, [transaction]);
 
+  // Line Chart: Daily Expense Trend (last 30 days)
+  useEffect(() => {
+    if (!lineChartRef.current) return;
+
+    // Get daily expense data for the last 30 days
+    const dailyData = {};
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    transaction?.forEach(item => {
+      const date = new Date(item.date);
+      if (date >= thirtyDaysAgo && item.type === 'Pengeluaran') {
+        const dayKey = date.toISOString().split('T')[0];
+        if (!dailyData[dayKey]) {
+          dailyData[dayKey] = 0;
+        }
+        dailyData[dayKey] += Math.abs(item.amount);
+      }
+    });
+
+    // Sort by date
+    const sortedDays = Object.keys(dailyData).sort();
+    const labels = sortedDays.map(key => {
+      const date = new Date(key);
+      return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+    });
+    const data = sortedDays.map(key => dailyData[key]);
+
+    const chart = new Chart(lineChartRef.current, {
+      type: 'line',
+      data: {
+        labels: labels.length ? labels : ['No Data'],
+        datasets: [
+          {
+            label: 'Pengeluaran',
+            data: data.length ? data : [0],
+            borderColor: 'rgba(239, 68, 68, 1)',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            tension: 0.4,
+            fill: true,
+            pointRadius: 4,
+            pointBackgroundColor: 'rgba(239, 68, 68, 1)',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
+          },
+          {
+            label: 'Pemasukan',
+            data: data.length ? data.map(() => 0) : [0],
+            borderColor: 'rgba(16, 185, 129, 1)',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            tension: 0.4,
+            fill: true,
+            pointRadius: 4,
+            pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+            labels: {
+              usePointStyle: true,
+              padding: 15
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              display: true,
+              color: 'rgba(0, 0, 0, 0.05)'
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            }
+          }
+        }
+      }
+    });
+
+    return () => chart.destroy();
+  }, [transaction]);
+
+  // Pie Chart: Top 5 Categories
+  useEffect(() => {
+    if (!categoryChartRef.current) return;
+
+    // Destroy existing chart if any
+    Chart.getChart(categoryChartRef.current)?.destroy();
+
+    // Aggregate by category
+    const categoryData = {};
+    transaction?.forEach(item => {
+      if (!categoryData[item.category]) {
+        categoryData[item.category] = 0;
+      }
+      categoryData[item.category] += Math.abs(item.amount);
+    });
+
+    // Calculate total
+    const total = Object.values(categoryData).reduce((sum, val) => sum + val, 0);
+
+    // Sort and get top 5
+    const sortedCategories = Object.entries(categoryData)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    const labels = sortedCategories.map(([category]) => category);
+    const percentages = sortedCategories.map(([, amount]) => total > 0 ? (amount / total) * 100 : 0);
+
+    const chart = new Chart(categoryChartRef.current, {
+      type: 'pie',
+      data: {
+        labels: labels.length ? labels : ['No Data'],
+        datasets: [
+          {
+            data: percentages.length ? percentages : [100],
+            backgroundColor: [
+              'rgba(16, 185, 129, 0.8)',
+              'rgba(239, 68, 68, 0.8)',
+              'rgba(59, 130, 246, 0.8)',
+              'rgba(251, 191, 36, 0.8)',
+              'rgba(139, 92, 246, 0.8)'
+            ],
+            borderColor: [
+              'rgba(16, 185, 129, 1)',
+              'rgba(239, 68, 68, 1)',
+              'rgba(59, 130, 246, 1)',
+              'rgba(251, 191, 36, 1)',
+              'rgba(139, 92, 246, 1)'
+            ],
+            borderWidth: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'right',
+            labels: {
+              usePointStyle: true,
+              padding: 15,
+              generateLabels: function (chart) {
+                const data = chart.data;
+                if (data.labels.length && data.datasets.length) {
+                  return data.labels.map((label, i) => {
+                    const value = data.datasets[0].data[i];
+                    return {
+                      text: `${label}: ${value.toFixed(1)}%`,
+                      fillStyle: data.datasets[0].backgroundColor[i],
+                      hidden: false,
+                      index: i
+                    };
+                  });
+                }
+                return [];
+              }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function (context) {
+                const label = context.label || '';
+                const value = context.parsed;
+                return `${label}: ${value.toFixed(1)}%`;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return () => chart.destroy();
+  }, [transaction]);
+
+  // Calculate financial summary
+  const totalIncome = transaction
+    ?.filter(item => item.type === 'Pemasukan')
+    .reduce((sum, item) => sum + item.amount, 0) || 0;
+
+  const totalExpense = transaction
+    ?.filter(item => item.type === 'Pengeluaran')
+    .reduce((sum, item) => sum + Math.abs(item.amount), 0) || 0;
+
+  const balance = totalIncome - totalExpense;
+
+  // Filter transactions based on selected type
+  const filteredTransactions = transaction?.filter(item => {
+    if (filterType === 'Semua') return true;
+    if (filterType === 'Masuk') return item.type === 'Pemasukan';
+    if (filterType === 'Keluar') return item.type === 'Pengeluaran';
+    return true;
+  }) || [];
+
   return (
-    <div className="bg-blue-50 pt-10 pb-20">
+    <div className="bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 min-h-screen pt-12 pb-20">
+      <div className="flex justify-center mb-2">
+        <h1 className="text-5xl font-bold text-gray-900 tracking-tight">Tracking Your Money</h1>
+      </div>
       <div className="flex justify-center">
-        <h1 className="text-4xl font-semibold text-blue-900">Tracking Your Money</h1>
+        <p className="text-gray-500 text-sm">Financial Management Dashboard</p>
       </div>
-      <div className="flex justify-center mt-10">
-        <div className="w-full max-w-2xl mb-10 flex justify-center">
-          <canvas
-            ref={canvasRef}
-            style={{ width: '80%', height: '80%' }}
-          />
+
+      {/* Financial Summary Cards */}
+      <div className="max-w-7xl md:mx-auto mx-4 mt-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Total Income Card */}
+          <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">Total Income</p>
+              <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center">
+                <FiTrendingUp className="text-white text-xl" />
+              </div>
+            </div>
+            <p className="text-4xl font-bold text-gray-900 mb-2">Rp {totalIncome.toLocaleString()}</p>
+            <div className="flex items-center gap-2">
+              <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium">Revenue</span>
+            </div>
+          </div>
+
+          {/* Total Expense Card */}
+          <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">Total Expense</p>
+              <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center">
+                <FiTrendingDown className="text-white text-xl" />
+              </div>
+            </div>
+            <p className="text-4xl font-bold text-gray-900 mb-2">Rp {totalExpense.toLocaleString()}</p>
+            <div className="flex items-center gap-2">
+              <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium">Spending</span>
+            </div>
+          </div>
+
+          {/* Balance Card */}
+          <div className="bg-gradient-to-br from-gray-900 to-gray-800 p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-white text-xs uppercase tracking-wider font-medium">Net Balance</p>
+              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                <FiDollarSign className="text-gray-900 text-xl" />
+              </div>
+            </div>
+            <p className="text-4xl font-bold mb-2 text-white">
+              Rp {balance.toLocaleString()}
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="inline-block px-3 py-1 bg-white text-gray-900 text-xs rounded-full font-medium">
+                {balance >= 0 ? 'Profit' : 'Loss'}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
-      <div className="mt-4 max-w-6xl md:mx-auto mx-4 bg-white p-4 rounded-lg shadow-md">
-        <div className="flex justify-between mb-4">
-          <h2 className="text-2xl font-semibold text-blue-900">Daftar Transaksi</h2>
-          <button className="text-white cursor-pointer bg-blue-600 py-2 px-4 rounded" onClick={toggleModal}>Add New</button>
+
+      {/* Charts Section */}
+      <div className="max-w-7xl md:mx-auto mx-4 mt-8 mb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Bar Chart: Income vs Expense - Takes 2 columns */}
+          <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 lg:col-span-2 hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">Profit Analysis</h3>
+                <p className="text-sm text-gray-500">Comparison of capital and sales per item</p>
+              </div>
+              <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center">
+                <FiBarChart2 className="text-gray-900 text-2xl" />
+              </div>
+            </div>
+            <div style={{ height: '320px' }}>
+              <canvas ref={barChartRef}></canvas>
+            </div>
+          </div>
+
+          {/* Pie Chart: Distribution - Takes 1 column */}
+          <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">Distribution</h3>
+                <p className="text-sm text-gray-500">Transaction breakdown</p>
+              </div>
+              <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center">
+                <FiPieChart className="text-gray-900 text-2xl" />
+              </div>
+            </div>
+            <div style={{ height: '320px' }}>
+              <canvas ref={categoryChartRef}></canvas>
+            </div>
+          </div>
+
+          {/* Line Chart: Daily Trend - Takes full width */}
+          <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 lg:col-span-3 hover:shadow-xl transition-all duration-300">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">7-Day Trend</h3>
+                <p className="text-sm text-gray-500">Daily transaction monitoring</p>
+              </div>
+              <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center">
+                <FiActivity className="text-gray-900 text-2xl" />
+              </div>
+            </div>
+            <div style={{ height: '320px' }}>
+              <canvas ref={lineChartRef}></canvas>
+            </div>
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className='w-full text-sm text-left text-gray-500'>
-            <thead className='bg-blue-100 text-blue-900'>
-              <tr className='border-b'>
-                <th className="px-4 py-2 text-left">No</th>
-                <th className="px-4 py-2 text-left">Deskripsi</th>
-                <th className="px-4 py-2 text-left">Jenis</th>
-                <th className="px-4 py-2 text-left">Asal/Tujuan</th>
-                <th className="px-4 py-2 text-left">Jumlah</th>
-                <th className="px-4 py-2 text-left">Tanggal</th>
-                <th className="px-4 py-2 text-left">Aksi</th>
+      </div>
+      <div className="mt-8 max-w-7xl md:mx-auto mx-4 bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-1">Transaction History</h2>
+            <p className="text-sm text-gray-500">Manage your financial records</p>
+          </div>
+          <button className="text-white cursor-pointer bg-gray-900 hover:bg-gray-800 py-3 px-6 rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg" onClick={toggleModal}>+ Add Transaction</button>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="flex gap-2 mb-8 bg-gray-50 p-1.5 rounded-xl w-fit border border-gray-200">
+          <button
+            onClick={() => setFilterType('Semua')}
+            className={`px-8 py-3 rounded-lg transition-all duration-200 text-sm font-semibold ${filterType === 'Semua'
+              ? 'bg-gray-900 text-white shadow-md'
+              : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setFilterType('Masuk')}
+            className={`px-8 py-3 rounded-lg transition-all duration-200 text-sm font-semibold ${filterType === 'Masuk'
+              ? 'bg-gray-900 text-white shadow-md'
+              : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+          >
+            Income
+          </button>
+          <button
+            onClick={() => setFilterType('Keluar')}
+            className={`px-8 py-3 rounded-lg transition-all duration-200 text-sm font-semibold ${filterType === 'Keluar'
+              ? 'bg-gray-900 text-white shadow-md'
+              : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+          >
+            Expense
+          </button>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-gray-200">
+          <table className='w-full text-sm text-left'>
+            <thead className='bg-gray-50 border-b border-gray-200'>
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">#</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Description</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Amount</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {transaction?.length ? (
-                transaction?.map((item, index) => (
-                  <tr key={index} className="hover:bg-blue-50">
-                    <td className="px-4 py-2">{index + 1}</td>
-                    <td className="px-4 py-2">{item.description}</td>
-                    <td className="px-4 py-2"><span>{item.type}</span></td>
-                    <td className="px-4 py-2">{item.category}</td>
-                    <td className="px-4 py-2">Rp {item.amount.toLocaleString()}</td>
-                    <td className="px-4 py-2">{new Date(item.date).toLocaleDateString()}</td>
-                    <td className="px-4 py-2">
-                      <button className="text-white cursor-pointer bg-blue-600 py-2 px-4 rounded" onClick={() => handleEdit(item.id)}>Edit</button>
-                      <button className="text-white cursor-pointer ml-2 bg-red-600 py-2 px-4 rounded" onClick={() => handleDelete(item.id)}>Hapus</button>
+              {filteredTransactions?.length ? (
+                filteredTransactions?.map((item, index) => (
+                  <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150">
+                    <td className="px-6 py-4 text-gray-500 font-medium">{index + 1}</td>
+                    <td className="px-6 py-4 text-gray-900 font-medium">{item.description}</td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${item.type === 'Pemasukan'
+                        ? 'bg-gray-100 text-gray-900'
+                        : 'bg-gray-900 text-white'
+                        }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${item.type === 'Pemasukan' ? 'bg-gray-900' : 'bg-white'
+                          }`}></span>
+                        {item.type === 'Pemasukan' ? 'Income' : 'Expense'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-700">{item.category}</td>
+                    <td className="px-6 py-4 text-gray-900 font-semibold">Rp {Math.abs(item.amount).toLocaleString()}</td>
+                    <td className="px-6 py-4 text-gray-500">{new Date(item.date).toLocaleDateString()}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
+                        <button className="text-gray-700 cursor-pointer bg-gray-100 hover:bg-gray-200 py-2 px-4 rounded-lg text-xs font-medium transition-colors duration-200" onClick={() => handleEdit(item.id)}>Edit</button>
+                        <button className="text-white cursor-pointer bg-gray-900 hover:bg-gray-800 py-2 px-4 rounded-lg text-xs font-medium transition-colors duration-200" onClick={() => handleDelete(item.id)}>Delete</button>
+                      </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="text-center py-4">Tidak ada transaksi</td>
+                  <td colSpan="7" className="text-center py-12 text-gray-500">
+                    <div className="flex flex-col items-center">
+                      <FiInbox className="text-5xl mb-3 text-gray-400" />
+                      <p className="font-medium">No transactions yet</p>
+                      <p className="text-sm">Start by adding your first transaction</p>
+                    </div>
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -217,80 +618,84 @@ const Page = () => {
           ></div>
 
           <div className="relative flex items-center justify-center h-full">
-            <div className="bg-white p-6 rounded-lg w-full max-w-md mx-4">
-              <h2 className="text-2xl font-semibold mb-4">Tambah Transaksi Baru</h2>
+            <div className="bg-white p-8 rounded-2xl w-full max-w-lg mx-4 shadow-2xl">
+              <h2 className="text-3xl font-bold mb-2 text-gray-900">New Transaction</h2>
+              <p className="text-sm text-gray-500 mb-6">Add a new financial record</p>
 
-              <div className="mb-4">
-                <label className="block text-gray-700 mb-2">Deskripsi</label>
+              <div className="mb-5">
+                <label className="block text-gray-700 mb-2 font-semibold text-sm">Description</label>
                 <input
                   type="text"
                   name="description"
-                  className="w-full p-2 border rounded"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   required
+                  placeholder="Enter description (e.g., Salary, Groceries, Checkout, etc.)"
                 />
               </div>
-              <div className="mb-4">
-                <label className="block text-gray-700 mb-2">Jenis</label>
+              <div className="mb-5">
+                <label className="block text-gray-700 mb-2 font-semibold text-sm">Type</label>
                 <select
                   name="type"
-                  className="w-full p-2 border rounded"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200"
                   required
                   value={formData.type}
                   onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                 >
-                  <option value="Pemasukan">Pemasukan</option>
-                  <option value="Pengeluaran">Pengeluaran</option>
+                  <option value="Pemasukan">Income</option>
+                  <option value="Pengeluaran">Expense</option>
                 </select>
               </div>
-              <div className="mb-4">
-                <label className="block text-gray-700 mb-2">Asal/Tujuan</label>
+              <div className="mb-5">
+                <label className="block text-gray-700 mb-2 font-semibold text-sm">Category</label>
                 <input
                   type="text"
                   name="category"
-                  className="w-full p-2 border rounded"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200"
                   required
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  placeholder="Enter category (e.g., Shopee, Bank BCA, Gojek, etc.)"
                 />
               </div>
-              <div className="mb-4">
-                <label className="block text-gray-700 mb-2">Jumlah</label>
+              <div className="mb-5">
+                <label className="block text-gray-700 mb-2 font-semibold text-sm">Amount</label>
                 <input
                   type="text"
                   name="amount"
-                  className="w-full p-2 border rounded"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200"
                   required
                   value={formData.amount}
                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  placeholder="Enter amount (e.g., 50000, 150000, etc.)"
                 />
               </div>
-              <div className="mb-4">
-                <label className="block text-gray-700 mb-2">Tanggal</label>
+              <div className="mb-6">
+                <label className="block text-gray-700 mb-2 font-semibold text-sm">Date</label>
                 <input
                   type="date"
                   name="date"
-                  className="w-full p-2 border rounded"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200"
                   required
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                 />
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-3 mt-8">
                 <button
                   type="button"
                   onClick={toggleModal}
-                  className="bg-gray-500 text-white px-4 py-2 rounded cusor-pointer"
+                  className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-all duration-200 cursor-pointer"
                 >
-                  Batal
+                  Cancel
                 </button>
                 <button
                   type="button"
-                  className="bg-blue-600 text-white px-4 py-2 rounded cusor-pointer"
+                  className="bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 transition-all duration-200 cursor-pointer shadow-lg"
                   onClick={handleSubmit}
                 >
-                  Simpan
+                  Save Transaction
                 </button>
               </div>
             </div>

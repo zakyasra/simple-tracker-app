@@ -1,12 +1,12 @@
 import "./globals.css";
 import Head from "next/head";
-import { Poppins } from 'next/font/google'
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import { ToastContainer } from "react-toastify";
 
-const poppins = Poppins({
+const plusJakartaSans = Plus_Jakarta_Sans({
   subsets: ['latin'],
-  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
-  variable: '--font-poppins', // Optional: for CSS variables
+  weight: ['200', '300', '400', '500', '600', '700', '800'],
+  variable: '--font-plus-jakarta-sans',
   display: "swap",
   adjustFontFallback: false,
 })
@@ -53,7 +53,7 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </Head>
-      <body className={`${poppins.variable}`}><ToastContainer />{children}</body>
+      <body className={`${plusJakartaSans.variable}`}><ToastContainer />{children}</body>
     </html>
   );
 }
