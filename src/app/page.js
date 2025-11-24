@@ -174,10 +174,14 @@ const Page = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [selectedCategoryIcon, setSelectedCategoryIcon] = useState(null);
+  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
+  const [isCustomRangeOpen, setIsCustomRangeOpen] = useState(false);
+  const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
   const barChartRef = useRef(null);
   const lineChartRef = useRef(null);
   const categoryChartRef = useRef(null);
   const categoryDropdownRef = useRef(null);
+  const exportDropdownRef = useRef(null);
 
   const toggleModal = () => {
     // Only clear form data when closing modal (not opening for edit)
@@ -201,6 +205,9 @@ const Page = () => {
     const handleClickOutside = (event) => {
       if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
         setIsCategoryOpen(false);
+      }
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target)) {
+        setIsExportDropdownOpen(false);
       }
     };
 
@@ -297,8 +304,8 @@ const Page = () => {
     }
   }
 
-  const handleExport = () => {
-    if (!transaction || transaction.length === 0) {
+  const exportToExcel = (filteredData, filename) => {
+    if (!filteredData || filteredData.length === 0) {
       toast.error("No transactions to export!", {
         position: "top-center",
       });
@@ -306,13 +313,13 @@ const Page = () => {
     }
 
     // Prepare data for Excel
-    const excelData = transaction.map((item, index) => ({
+    const excelData = filteredData.map((item, index) => ({
       'No': index + 1,
       'Description': item.description,
       'Type': item.type,
       'Category': item.category,
       'Amount': Math.abs(item.amount),
-      'Date': item.date // Use ISO format (YYYY-MM-DD) for easier re-import
+      'Date': item.date
     }));
 
     // Create worksheet
@@ -333,12 +340,57 @@ const Page = () => {
     XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
 
     // Generate Excel file and download
-    XLSX.writeFile(wb, `transactions-${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(wb, filename);
 
-    toast.success("Transactions exported to Excel successfully!", {
+    toast.success(`${filteredData.length} transactions exported successfully!`, {
       position: "top-center",
     });
-  }
+    setIsExportDropdownOpen(false);
+  };
+
+  const handleExportLast7Days = () => {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const filtered = transaction.filter(item => {
+      const itemDate = new Date(item.date);
+      return itemDate >= sevenDaysAgo && itemDate <= now;
+    });
+    exportToExcel(filtered, `transactions-last-7-days-${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const handleExportLast30Days = () => {
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const filtered = transaction.filter(item => {
+      const itemDate = new Date(item.date);
+      return itemDate >= thirtyDaysAgo && itemDate <= now;
+    });
+    exportToExcel(filtered, `transactions-last-30-days-${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const handleExportCustomRange = () => {
+    if (!customDateRange.start || !customDateRange.end) {
+      toast.error("Please select both start and end dates!", {
+        position: "top-center",
+      });
+      return;
+    }
+    const startDate = new Date(customDateRange.start);
+    const endDate = new Date(customDateRange.end);
+    if (startDate > endDate) {
+      toast.error("Start date must be before end date!", {
+        position: "top-center",
+      });
+      return;
+    }
+    const filtered = transaction.filter(item => {
+      const itemDate = new Date(item.date);
+      return itemDate >= startDate && itemDate <= endDate;
+    });
+    exportToExcel(filtered, `transactions-${customDateRange.start}-to-${customDateRange.end}.xlsx`);
+    setIsCustomRangeOpen(false);
+    setCustomDateRange({ start: '', end: '' });
+  };
 
   const handleImport = (event) => {
     const file = event.target.files[0];
@@ -901,13 +953,44 @@ const Page = () => {
             <p className="text-sm text-gray-500">Manage your financial records</p>
           </div>
           <div className="flex flex-wrap gap-2 md:gap-3">
-            <button
-              className="text-gray-700 cursor-pointer bg-gray-100 hover:bg-gray-200 py-2.5 md:py-3 px-4 md:px-5 rounded-xl text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
-              onClick={handleExport}
-            >
-              <FiDownload className="text-base md:text-lg" />
-              <span className="hidden sm:inline">Export</span>
-            </button>
+            {/* Export Dropdown */}
+            <div className="relative" ref={exportDropdownRef}>
+              <button
+                className="text-gray-700 cursor-pointer bg-gray-100 hover:bg-gray-200 py-2.5 md:py-3 px-4 md:px-5 rounded-xl text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2"
+                onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
+              >
+                <FiDownload className="text-base md:text-lg" />
+                <span className="hidden sm:inline">Export</span>
+                <FiChevronDown className={`text-sm transition-transform duration-200 ${isExportDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isExportDropdownOpen && (
+                <div className="absolute z-50 mt-2 bg-white border border-gray-200 rounded-xl shadow-2xl min-w-[200px] overflow-hidden">
+                  <button
+                    onClick={handleExportLast7Days}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors duration-150 flex items-center gap-3 text-sm text-gray-700 border-b border-gray-100 cursor-pointer"
+                  >
+                    <span>Last 7 Days</span>
+                  </button>
+                  <button
+                    onClick={handleExportLast30Days}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors duration-150 flex items-center gap-3 text-sm text-gray-700 border-b border-gray-100 cursor-pointer"
+                  >
+                    <span>Last 30 Days</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsCustomRangeOpen(true);
+                      setIsExportDropdownOpen(false);
+                    }}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors duration-150 flex items-center gap-3 text-sm text-gray-700 cursor-pointer"
+                  >
+                    <span>Custom Range</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             <label className="text-gray-700 cursor-pointer bg-gray-100 hover:bg-gray-200 py-2.5 md:py-3 px-4 md:px-5 rounded-xl text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2">
               <FiUpload className="text-base md:text-lg" />
               <span className="hidden sm:inline">Import</span>
@@ -1183,6 +1266,64 @@ const Page = () => {
                   className="flex-1 bg-red-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-red-700 transition-all duration-200 cursor-pointer shadow-lg"
                 >
                   Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Date Range Modal */}
+      {isCustomRangeOpen && (
+        <div className="fixed inset-0 z-50">
+          {/* Overlay */}
+          <div
+            className="absolute inset-0 bg-black opacity-75"
+            onClick={() => setIsCustomRangeOpen(false)}
+          ></div>
+
+          <div className="relative flex items-center justify-center h-full px-4">
+            <div className="bg-white p-8 rounded-2xl w-full max-w-md shadow-2xl">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Custom Date Range</h3>
+              <p className="text-sm text-gray-500 mb-6">Select the date range for export</p>
+
+              <div className="mb-5">
+                <label className="block text-gray-700 mb-2 font-semibold text-sm">Start Date</label>
+                <input
+                  type="date"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200"
+                  value={customDateRange.start}
+                  onChange={(e) => setCustomDateRange({ ...customDateRange, start: e.target.value })}
+                />
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-gray-700 mb-2 font-semibold text-sm">End Date</label>
+                <input
+                  type="date"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200"
+                  value={customDateRange.end}
+                  onChange={(e) => setCustomDateRange({ ...customDateRange, end: e.target.value })}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustomRangeOpen(false);
+                    setCustomDateRange({ start: '', end: '' });
+                  }}
+                  className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-all duration-200 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportCustomRange}
+                  className="flex-1 bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 transition-all duration-200 cursor-pointer shadow-lg"
+                >
+                  Export
                 </button>
               </div>
             </div>
