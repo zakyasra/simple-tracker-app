@@ -1020,8 +1020,8 @@ const Page = () => {
             onClick={toggleModal}
           ></div>
 
-          <div className="relative flex items-center justify-center h-full">
-            <div className="bg-white p-8 rounded-2xl w-full max-w-lg mx-4 shadow-2xl">
+          <div className="relative flex items-center justify-center h-full px-4 py-8 overflow-y-auto">
+            <div className="bg-white p-8 rounded-2xl w-full max-w-lg shadow-2xl my-auto">
               <h2 className="text-3xl font-bold mb-2 text-gray-900">New Transaction</h2>
               <p className="text-sm text-gray-500 mb-6">Add a new financial record</p>
 
@@ -1067,7 +1067,7 @@ const Page = () => {
                   </button>
 
                   {isCategoryOpen && (
-                    <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-[60vh] overflow-y-auto">
+                    <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-[35dvh] overflow-y-auto">
                       {CATEGORIES.map((category, idx) => (
                         <div key={idx}>
                           {/* Main Category */}
