@@ -46,8 +46,19 @@ const CATEGORIES = [
       { name: 'Affiliate', icon: FaChartLine },
       { name: 'Stock Profit', icon: FaChartLine },
       { name: 'Stock Dividend', icon: FaChartLine },
-      { name: 'Crypto Profit', icon: FaBitcoin },
-      { name: 'Others', icon: FaEllipsisH }
+      { name: 'Crypto Profit', icon: FaBitcoin }
+    ]
+  },
+  {
+    name: 'Investment',
+    icon: FaChartLine,
+    subcategories: [
+      { name: 'Gold', icon: FaGem },
+      { name: 'Crypto', icon: FaBitcoin },
+      { name: 'Stocks', icon: FaChartLine },
+      { name: 'Mutual Funds', icon: FaChartLine },
+      { name: 'Retirement Funds', icon: FaChartLine },
+      { name: 'Bonds', icon: FaChartLine },
     ]
   },
   {
@@ -89,7 +100,6 @@ const CATEGORIES = [
     subcategories: [
       { name: 'Clothes', icon: FaTshirt },
       { name: 'Pants', icon: FaTshirt },
-      { name: 'Gold', icon: FaGem },
       { name: 'Gadgets', icon: FaGadget },
       { name: 'Electronics', icon: FaTv }
     ]
