@@ -16,7 +16,9 @@ import {
   FaGamepad, FaFutbol, FaTableTennis, FaBasketballBall, FaVolleyballBall, FaPlane,
   FaSpa, FaCut, FaSprayCan,
   FaGift, FaTwitch, FaHeart, FaHandHoldingHeart,
-  FaEllipsisH, FaCode, FaBullhorn, FaMoneyCheck, FaCreditCard
+  FaEllipsisH, FaCode, FaBullhorn, FaMoneyCheck, FaCreditCard,
+  FaChartPie,
+  FaPiggyBank
 } from 'react-icons/fa';
 
 // Register components needed for Bar and Line charts
@@ -56,9 +58,9 @@ const CATEGORIES = [
       { name: 'Gold', icon: FaGem },
       { name: 'Crypto', icon: FaBitcoin },
       { name: 'Stocks', icon: FaChartLine },
-      { name: 'Mutual Funds', icon: FaChartLine },
-      { name: 'Retirement Funds', icon: FaChartLine },
-      { name: 'Bonds', icon: FaChartLine },
+      { name: 'Mutual Funds', icon: FaChartPie },
+      { name: 'Retirement Funds', icon: FaPiggyBank },
+      { name: 'Bonds', icon: FaFileInvoiceDollar },
     ]
   },
   {
