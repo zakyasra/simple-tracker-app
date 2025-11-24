@@ -2,6 +2,7 @@
 
 import { useTransactionStore } from '@/hooks/useTransaction';
 import { CategoryScale, Chart, LinearScale, BarElement, PointElement, LineElement, ArcElement, Tooltip, Legend, BarController, LineController, PieController } from 'chart.js';
+import * as XLSX from 'xlsx';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiBarChart2, FiPieChart, FiActivity, FiInbox, FiDownload, FiUpload, FiChevronDown, FiCheck, FiFilm, FiMusic } from 'react-icons/fi';
@@ -154,7 +155,7 @@ const Page = () => {
     type: 'Pemasukan',
     category: '',
     amount: '',
-    date: ''
+    date: new Date().toISOString().split('T')[0]
   })
   const [editId, setEditId] = useState(null);
   const [filterType, setFilterType] = useState('Semua');
@@ -174,7 +175,7 @@ const Page = () => {
         type: 'Pemasukan',
         category: '',
         amount: '',
-        date: ''
+        date: new Date().toISOString().split('T')[0]
       });
       setEditId(null);
       setSelectedCategoryIcon(null);
@@ -243,7 +244,7 @@ const Page = () => {
       type: 'Pemasukan',
       category: '',
       amount: '',
-      date: ''
+      date: new Date().toISOString().split('T')[0]
     });
     setEditId(null);
 
@@ -292,18 +293,37 @@ const Page = () => {
       return;
     }
 
-    const dataStr = JSON.stringify(transaction, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `transactions-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    // Prepare data for Excel
+    const excelData = transaction.map((item, index) => ({
+      'No': index + 1,
+      'Description': item.description,
+      'Type': item.type,
+      'Category': item.category,
+      'Amount': Math.abs(item.amount),
+      'Date': item.date // Use ISO format (YYYY-MM-DD) for easier re-import
+    }));
 
-    toast.success("Transactions exported successfully!", {
+    // Create worksheet
+    const ws = XLSX.utils.json_to_sheet(excelData);
+
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 5 },  // No
+      { wch: 30 }, // Description
+      { wch: 15 }, // Type
+      { wch: 20 }, // Category
+      { wch: 15 }, // Amount
+      { wch: 15 }  // Date
+    ];
+
+    // Create workbook and add worksheet
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Transactions');
+
+    // Generate Excel file and download
+    XLSX.writeFile(wb, `transactions-${new Date().toISOString().split('T')[0]}.xlsx`);
+
+    toast.success("Transactions exported to Excel successfully!", {
       position: "top-center",
     });
   }
@@ -312,45 +332,141 @@ const Page = () => {
     const file = event.target.files[0];
     if (!file) return;
 
-    if (file.type !== 'application/json') {
-      toast.error("Please upload a valid JSON file!", {
+    // Accept both Excel and JSON files
+    const fileExt = file.name.split('.').pop().toLowerCase();
+    if (!['xlsx', 'xls', 'json'].includes(fileExt)) {
+      toast.error("Please upload a valid Excel (.xlsx, .xls) or JSON file!", {
         position: "top-center",
       });
       return;
     }
 
     const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const importedData = JSON.parse(e.target.result);
 
-        if (!Array.isArray(importedData)) {
-          toast.error("Invalid data format!", {
+    if (fileExt === 'json') {
+      // Handle JSON import (legacy support)
+      reader.onload = (e) => {
+        try {
+          const importedData = JSON.parse(e.target.result);
+
+          if (!Array.isArray(importedData)) {
+            toast.error("Invalid data format!", {
+              position: "top-center",
+            });
+            return;
+          }
+
+          // Generate new IDs for imported data to avoid conflicts
+          const dataWithNewIds = importedData.map(item => ({
+            ...item,
+            id: Date.now() + Math.floor(Math.random() * 10000)
+          }));
+
+          // Merge with existing transactions
+          const mergedData = [...transaction, ...dataWithNewIds];
+          importTransactions(mergedData);
+
+          toast.success(`${importedData.length} transactions imported successfully!`, {
             position: "top-center",
           });
-          return;
+        } catch (error) {
+          toast.error("Error parsing JSON file!", {
+            position: "top-center",
+          });
         }
+      };
+      reader.readAsText(file);
+    } else {
+      // Handle Excel import
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
 
-        // Generate new IDs for imported data to avoid conflicts
-        const dataWithNewIds = importedData.map(item => ({
-          ...item,
-          id: Date.now() + Math.floor(Math.random() * 10000)
-        }));
+          // Get first worksheet
+          const wsname = workbook.SheetNames[0];
+          const ws = workbook.Sheets[wsname];
 
-        // Merge with existing transactions
-        const mergedData = [...transaction, ...dataWithNewIds];
-        importTransactions(mergedData);
+          // Convert to JSON
+          const jsonData = XLSX.utils.sheet_to_json(ws);
 
-        toast.success(`${importedData.length} transactions imported successfully!`, {
-          position: "top-center",
-        });
-      } catch (error) {
-        toast.error("Error parsing JSON file!", {
-          position: "top-center",
-        });
-      }
-    };
-    reader.readAsText(file);
+          if (!jsonData || jsonData.length === 0) {
+            toast.error("No data found in Excel file!", {
+              position: "top-center",
+            });
+            return;
+          }
+
+          // Transform Excel data to transaction format
+          const transformedData = jsonData.map(row => {
+            // Parse date with better error handling
+            let parsedDate;
+            try {
+              if (row.Date) {
+                // Handle Excel serial date (number)
+                if (typeof row.Date === 'number') {
+                  // Excel serial date conversion
+                  const excelEpoch = new Date(1899, 11, 30);
+                  const days = Math.floor(row.Date);
+                  const date = new Date(excelEpoch.getTime() + days * 86400000);
+                  parsedDate = date.toISOString().split('T')[0];
+                } else {
+                  // Try parsing string date
+                  // Handle Indonesian date format: "24/11/2025" or "24 Nov 2025"
+                  let dateStr = row.Date.toString();
+
+                  // Try direct parse first
+                  let date = new Date(dateStr);
+
+                  // If invalid, try parsing Indonesian format
+                  if (isNaN(date.getTime())) {
+                    // Try parsing "24/11/2025" format
+                    const parts = dateStr.split('/');
+                    if (parts.length === 3) {
+                      date = new Date(parts[2], parts[1] - 1, parts[0]);
+                    }
+                  }
+
+                  if (!isNaN(date.getTime())) {
+                    parsedDate = date.toISOString().split('T')[0];
+                  } else {
+                    parsedDate = new Date().toISOString().split('T')[0];
+                  }
+                }
+              } else {
+                parsedDate = new Date().toISOString().split('T')[0];
+              }
+            } catch (error) {
+              console.error('Date parsing error:', error);
+              parsedDate = new Date().toISOString().split('T')[0];
+            }
+
+            return {
+              id: Date.now() + Math.floor(Math.random() * 10000),
+              description: row.Description || '',
+              type: row.Type || 'Pengeluaran',
+              category: row.Category || 'Others',
+              amount: row.Type === 'Pengeluaran' ? -Math.abs(Number(row.Amount) || 0) : Math.abs(Number(row.Amount) || 0),
+              date: parsedDate
+            };
+          });
+
+          // Merge with existing transactions
+          const mergedData = [...transaction, ...transformedData];
+          importTransactions(mergedData);
+
+          toast.success(`${transformedData.length} transactions imported from Excel successfully!`, {
+            position: "top-center",
+          });
+        } catch (error) {
+          console.error('Import error:', error);
+          toast.error("Error reading Excel file!", {
+            position: "top-center",
+          });
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
 
     // Reset input
     event.target.value = '';
@@ -785,7 +901,7 @@ const Page = () => {
               <span className="hidden sm:inline">Import</span>
               <input
                 type="file"
-                accept=".json"
+                accept=".xlsx,.xls,.json"
                 onChange={handleImport}
                 className="hidden"
               />
