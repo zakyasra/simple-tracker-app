@@ -36,70 +36,70 @@ Chart.register(
 // Categories data structure
 const CATEGORIES = [
   {
-    name: 'Uang masuk',
+    name: 'Income',
     icon: FaMoneyBillWave,
     subcategories: [
-      { name: 'Gaji Bulanan', icon: FaBriefcase },
-      { name: 'Gaji lemburan', icon: FaBriefcase },
+      { name: 'Monthly Salary', icon: FaBriefcase },
+      { name: 'Overtime Pay', icon: FaBriefcase },
       { name: 'Freelance', icon: FaLaptopCode },
       { name: 'Affiliate', icon: FaChartLine },
-      { name: 'Profit Saham', icon: FaChartLine },
-      { name: 'Dividend Saham', icon: FaChartLine },
-      { name: 'Profit Crypto', icon: FaBitcoin },
-      { name: 'Lainnya', icon: FaEllipsisH }
+      { name: 'Stock Profit', icon: FaChartLine },
+      { name: 'Stock Dividend', icon: FaChartLine },
+      { name: 'Crypto Profit', icon: FaBitcoin },
+      { name: 'Others', icon: FaEllipsisH }
     ]
   },
   {
-    name: 'Makan & Minum',
+    name: 'Food & Drinks',
     icon: FaUtensils,
     subcategories: [
-      { name: 'Makan', icon: FaUtensils },
-      { name: 'Kopi & Minuman', icon: FaCoffee },
+      { name: 'Meals', icon: FaUtensils },
+      { name: 'Coffee & Beverages', icon: FaCoffee },
       { name: 'Snacks', icon: FaCookie },
-      { name: 'Belanja Bulanan', icon: FaShoppingCart }
+      { name: 'Groceries', icon: FaShoppingCart }
     ]
   },
   {
-    name: 'Transportasi',
+    name: 'Transportation',
     icon: FaCar,
     subcategories: [
-      { name: 'Bensin', icon: FaGasPump },
-      { name: 'Transportasi Umum', icon: FaBus },
-      { name: 'Parkir', icon: FaParking },
+      { name: 'Fuel', icon: FaGasPump },
+      { name: 'Public Transport', icon: FaBus },
+      { name: 'Parking', icon: FaParking },
       { name: 'Toll', icon: FaRoad },
-      { name: 'Service Kendaraan', icon: FaWrench }
+      { name: 'Vehicle Service', icon: FaWrench }
     ]
   },
   {
-    name: 'Tagihan',
+    name: 'Bills',
     icon: FaFileInvoiceDollar,
     subcategories: [
-      { name: 'Wifi / Internet', icon: FaWifi },
-      { name: 'Pulsa', icon: FaMobileAlt },
-      { name: 'Listrik', icon: FaBolt },
-      { name: 'air', icon: FaTint },
-      { name: 'Netflix / Movie Streming Service', icon: FiFilm },
-      { name: 'Spotify / Music Streaming Service', icon: FiMusic }
+      { name: 'Internet / WiFi', icon: FaWifi },
+      { name: 'Mobile Credit', icon: FaMobileAlt },
+      { name: 'Electricity', icon: FaBolt },
+      { name: 'Water', icon: FaTint },
+      { name: 'Netflix / Movie Streaming', icon: FiFilm },
+      { name: 'Spotify / Music Streaming', icon: FiMusic }
     ]
   },
   {
     name: 'Shopping',
     icon: FaShoppingBag,
     subcategories: [
-      { name: 'Baju', icon: FaTshirt },
-      { name: 'Celana', icon: FaTshirt },
-      { name: 'Emas', icon: FaGem },
+      { name: 'Clothes', icon: FaTshirt },
+      { name: 'Pants', icon: FaTshirt },
+      { name: 'Gold', icon: FaGem },
       { name: 'Gadgets', icon: FaGadget },
-      { name: 'Kebutuhan elektronik', icon: FaTv }
+      { name: 'Electronics', icon: FaTv }
     ]
   },
   {
-    name: 'Kesehatan',
+    name: 'Health',
     icon: FaHeartbeat,
     subcategories: [
-      { name: 'Obat-obatan / Berobat', icon: FaPills },
-      { name: 'Konsultasi Dokter', icon: FaStethoscope },
-      { name: 'Vitamin / Suplements', icon: FaVial },
+      { name: 'Medicine / Treatment', icon: FaPills },
+      { name: 'Doctor Consultation', icon: FaStethoscope },
+      { name: 'Vitamins / Supplements', icon: FaVial },
       { name: 'Gym Support', icon: FaDumbbell }
     ]
   },
@@ -110,8 +110,8 @@ const CATEGORIES = [
       { name: 'Gym', icon: FaDumbbell },
       { name: 'Futsal', icon: FaFutbol },
       { name: 'Badminton', icon: FaTableTennis },
-      { name: 'Basket', icon: FaBasketballBall },
-      { name: 'Volly', icon: FaVolleyballBall },
+      { name: 'Basketball', icon: FaBasketballBall },
+      { name: 'Volleyball', icon: FaVolleyballBall },
       { name: 'Travelling', icon: FaPlane }
     ]
   },
@@ -122,26 +122,26 @@ const CATEGORIES = [
       { name: 'Barber', icon: FaCut },
       { name: 'Salon', icon: FaCut },
       { name: 'Skincare', icon: FaSprayCan },
-      { name: 'Spa / Message', icon: FaSpa }
+      { name: 'Spa / Massage', icon: FaSpa }
     ]
   },
   {
     name: 'Gift',
     icon: FaGift,
     subcategories: [
-      { name: 'Gift for streamers', icon: FaTwitch },
-      { name: 'Amal', icon: FaHeart },
-      { name: 'Membantu Keluarga', icon: FaHandHoldingHeart }
+      { name: 'Gift for Streamers', icon: FaTwitch },
+      { name: 'Charity', icon: FaHeart },
+      { name: 'Family Support', icon: FaHandHoldingHeart }
     ]
   },
   {
-    name: 'Lainnya',
+    name: 'Others',
     icon: FaEllipsisH,
     subcategories: [
-      { name: 'Langganan Software', icon: FaCode },
-      { name: 'Iklan Promosi Media Sosial', icon: FaBullhorn },
-      { name: 'Pinjaman', icon: FaMoneyCheck },
-      { name: 'Pinjaman Online', icon: FaCreditCard }
+      { name: 'Software Subscription', icon: FaCode },
+      { name: 'Social Media Ads', icon: FaBullhorn },
+      { name: 'Loan', icon: FaMoneyCheck },
+      { name: 'Online Loan', icon: FaCreditCard }
     ]
   }
 ];
@@ -657,10 +657,10 @@ const Page = () => {
   return (
     <div className="bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 min-h-screen pt-8 md:pt-12 pb-20">
       <div className="max-w-7xl md:mx-auto mx-4 mb-2">
-        <h1 className="text-3xl md:text-5xl font-bold text-gray-900 tracking-tight text-left md:text-center">Tracking Your Money</h1>
+        <h1 className="text-3xl md:text-5xl font-bold text-gray-900 tracking-tight text-left md:text-center">Private Money Tracker</h1>
       </div>
       <div className="max-w-7xl md:mx-auto mx-4">
-        <p className="text-gray-500 text-sm text-left md:text-center">Financial Management Dashboard</p>
+        <p className="text-gray-500 text-base text-left md:text-center">Your Money. Your Device. Zero Cloud Storage.</p>
       </div>
 
       {/* Financial Summary Cards */}

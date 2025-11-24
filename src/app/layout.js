@@ -12,22 +12,23 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 })
 
 export const metadata = {
-  title: "Expense Tracker",
-  description: "Track your expenses easily with our Expense Tracker app.",
-  keywords: "expense tracker, budget, finance, personal finance, money management",
-  authors: [{ name: "Your Name", url: "https://yourwebsite.com" }],
-  creator: "Your Name",
+  title: "Private Money Tracker - 100% Local, Zero Cloud Storage",
+  description: "Track your income and expenses with complete privacy. All data stays on your device - no servers, no cloud, no tracking. Your financial data belongs to you only.",
+  keywords: "private expense tracker, local money tracker, offline finance app, privacy finance, secure expense tracking, no cloud storage, local storage finance, personal budget tracker, private financial data, client-side expense tracker, zero tracking finance app, offline budget app, local financial management",
+  authors: [{ name: "Private Finance Tools" }],
+  creator: "Private Finance Tools",
+  robots: "index, follow",
   openGraph: {
-    title: "Expense Tracker",
-    description: "Track your expenses easily with our Expense Tracker app.",
-    url: "https://yourwebsite.com/expense-tracker",
-    siteName: "Expense Tracker",
+    title: "Private Money Tracker - Your Financial Data Stays Private",
+    description: "100% local expense tracking. All your financial data stays on your device. No servers, no cloud storage, complete privacy guaranteed.",
+    url: "https://simple-tracker-app.vercel.app",
+    siteName: "Private Money Tracker",
     images: [
       {
-        url: "https://yourwebsite.com/og-image.png",
+        url: "https://simple-tracker-app.vercel.app/og-private-tracker.png",
         width: 1200,
         height: 630,
-        alt: "Expense Tracker Open Graph Image",
+        alt: "Private Money Tracker - Local & Secure Financial Management",
       },
     ],
     locale: "en_US",
@@ -35,9 +36,9 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Expense Tracker",
-    description: "Track your expenses easily with our Expense Tracker app.",
-    images: ["https://yourwebsite.com/twitter-image.png"],
+    title: "Private Money Tracker - 100% Local & Private",
+    description: "Track your finances without compromise. All data stays on your device. No cloud, no servers, no tracking.",
+    images: ["https://simple-tracker-app.vercel.app/twitter-private-tracker.png"],
   },
 };
 
