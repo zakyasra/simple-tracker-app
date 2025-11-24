@@ -4,7 +4,19 @@ import { useTransactionStore } from '@/hooks/useTransaction';
 import { CategoryScale, Chart, LinearScale, BarElement, PointElement, LineElement, ArcElement, Tooltip, Legend, BarController, LineController, PieController } from 'chart.js';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiBarChart2, FiPieChart, FiActivity, FiInbox, FiDownload, FiUpload } from 'react-icons/fi';
+import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiBarChart2, FiPieChart, FiActivity, FiInbox, FiDownload, FiUpload, FiChevronDown, FiCheck, FiFilm, FiMusic } from 'react-icons/fi';
+import {
+  FaMoneyBillWave, FaBriefcase, FaLaptopCode, FaChartLine, FaBitcoin,
+  FaUtensils, FaCoffee, FaCookie, FaShoppingCart,
+  FaCar, FaGasPump, FaBus, FaParking, FaRoad, FaWrench,
+  FaFileInvoiceDollar, FaWifi, FaMobileAlt, FaBolt, FaTint,
+  FaShoppingBag, FaTshirt, FaGem, FaMobileAlt as FaGadget, FaTv,
+  FaHeartbeat, FaPills, FaStethoscope, FaVial, FaDumbbell,
+  FaGamepad, FaFutbol, FaTableTennis, FaBasketballBall, FaVolleyballBall, FaPlane,
+  FaSpa, FaCut, FaSprayCan,
+  FaGift, FaTwitch, FaHeart, FaHandHoldingHeart,
+  FaEllipsisH, FaCode, FaBullhorn, FaMoneyCheck, FaCreditCard
+} from 'react-icons/fa';
 
 // Register components needed for Bar and Line charts
 Chart.register(
@@ -21,6 +33,119 @@ Chart.register(
   PieController
 );
 
+// Categories data structure
+const CATEGORIES = [
+  {
+    name: 'Uang masuk',
+    icon: FaMoneyBillWave,
+    subcategories: [
+      { name: 'Gaji Bulanan', icon: FaBriefcase },
+      { name: 'Gaji lemburan', icon: FaBriefcase },
+      { name: 'Freelance', icon: FaLaptopCode },
+      { name: 'Affiliate', icon: FaChartLine },
+      { name: 'Profit Saham', icon: FaChartLine },
+      { name: 'Dividend Saham', icon: FaChartLine },
+      { name: 'Profit Crypto', icon: FaBitcoin },
+      { name: 'Lainnya', icon: FaEllipsisH }
+    ]
+  },
+  {
+    name: 'Makan & Minum',
+    icon: FaUtensils,
+    subcategories: [
+      { name: 'Makan', icon: FaUtensils },
+      { name: 'Kopi & Minuman', icon: FaCoffee },
+      { name: 'Snacks', icon: FaCookie },
+      { name: 'Belanja Bulanan', icon: FaShoppingCart }
+    ]
+  },
+  {
+    name: 'Transportasi',
+    icon: FaCar,
+    subcategories: [
+      { name: 'Bensin', icon: FaGasPump },
+      { name: 'Transportasi Umum', icon: FaBus },
+      { name: 'Parkir', icon: FaParking },
+      { name: 'Toll', icon: FaRoad },
+      { name: 'Service Kendaraan', icon: FaWrench }
+    ]
+  },
+  {
+    name: 'Tagihan',
+    icon: FaFileInvoiceDollar,
+    subcategories: [
+      { name: 'Wifi / Internet', icon: FaWifi },
+      { name: 'Pulsa', icon: FaMobileAlt },
+      { name: 'Listrik', icon: FaBolt },
+      { name: 'air', icon: FaTint },
+      { name: 'Netflix / Movie Streming Service', icon: FiFilm },
+      { name: 'Spotify / Music Streaming Service', icon: FiMusic }
+    ]
+  },
+  {
+    name: 'Shopping',
+    icon: FaShoppingBag,
+    subcategories: [
+      { name: 'Baju', icon: FaTshirt },
+      { name: 'Celana', icon: FaTshirt },
+      { name: 'Emas', icon: FaGem },
+      { name: 'Gadgets', icon: FaGadget },
+      { name: 'Kebutuhan elektronik', icon: FaTv }
+    ]
+  },
+  {
+    name: 'Kesehatan',
+    icon: FaHeartbeat,
+    subcategories: [
+      { name: 'Obat-obatan / Berobat', icon: FaPills },
+      { name: 'Konsultasi Dokter', icon: FaStethoscope },
+      { name: 'Vitamin / Suplements', icon: FaVial },
+      { name: 'Gym Support', icon: FaDumbbell }
+    ]
+  },
+  {
+    name: 'Hobby',
+    icon: FaGamepad,
+    subcategories: [
+      { name: 'Gym', icon: FaDumbbell },
+      { name: 'Futsal', icon: FaFutbol },
+      { name: 'Badminton', icon: FaTableTennis },
+      { name: 'Basket', icon: FaBasketballBall },
+      { name: 'Volly', icon: FaVolleyballBall },
+      { name: 'Travelling', icon: FaPlane }
+    ]
+  },
+  {
+    name: 'Self Care',
+    icon: FaSpa,
+    subcategories: [
+      { name: 'Barber', icon: FaCut },
+      { name: 'Salon', icon: FaCut },
+      { name: 'Skincare', icon: FaSprayCan },
+      { name: 'Spa / Message', icon: FaSpa }
+    ]
+  },
+  {
+    name: 'Gift',
+    icon: FaGift,
+    subcategories: [
+      { name: 'Gift for streamers', icon: FaTwitch },
+      { name: 'Amal', icon: FaHeart },
+      { name: 'Membantu Keluarga', icon: FaHandHoldingHeart }
+    ]
+  },
+  {
+    name: 'Lainnya',
+    icon: FaEllipsisH,
+    subcategories: [
+      { name: 'Langganan Software', icon: FaCode },
+      { name: 'Iklan Promosi Media Sosial', icon: FaBullhorn },
+      { name: 'Pinjaman', icon: FaMoneyCheck },
+      { name: 'Pinjaman Online', icon: FaCreditCard }
+    ]
+  }
+];
+
 const Page = () => {
   const { transaction, addTransaction, deleteTransaction, updateTransaction, importTransactions } = useTransactionStore();
   const [isOpenModal, setIsOpenModal] = useState(false);
@@ -34,9 +159,12 @@ const Page = () => {
   const [editId, setEditId] = useState(null);
   const [filterType, setFilterType] = useState('Semua');
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [isCategoryOpen, setIsCategoryOpen] = useState(false);
+  const [selectedCategoryIcon, setSelectedCategoryIcon] = useState(null);
   const barChartRef = useRef(null);
   const lineChartRef = useRef(null);
   const categoryChartRef = useRef(null);
+  const categoryDropdownRef = useRef(null);
 
   const toggleModal = () => {
     // Only clear form data when closing modal (not opening for edit)
@@ -49,8 +177,37 @@ const Page = () => {
         date: ''
       });
       setEditId(null);
+      setSelectedCategoryIcon(null);
+      setIsCategoryOpen(false);
     }
     setIsOpenModal(!isOpenModal);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target)) {
+        setIsCategoryOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleCategorySelect = (categoryName, icon) => {
+    setFormData({ ...formData, category: categoryName });
+    setSelectedCategoryIcon(icon);
+    setIsCategoryOpen(false);
+  };
+
+  const getCategoryIcon = (categoryName) => {
+    for (const cat of CATEGORIES) {
+      if (cat.name === categoryName) return cat.icon;
+      const subcat = cat.subcategories.find(sub => sub.name === categoryName);
+      if (subcat) return subcat.icon;
+    }
+    return FaEllipsisH;
   };
 
   const getRandomNumber = () => {
@@ -122,6 +279,7 @@ const Page = () => {
         amount: Math.abs(transactionToEdit.amount).toString(), // Convert to string for input
         date: new Date(transactionToEdit.date).toISOString().split('T')[0] // Format date for input
       });
+      setSelectedCategoryIcon(getCategoryIcon(transactionToEdit.category));
       setIsOpenModal(true);
     }
   }
@@ -766,15 +924,57 @@ const Page = () => {
               </div>
               <div className="mb-5">
                 <label className="block text-gray-700 mb-2 font-semibold text-sm">Category</label>
-                <input
-                  type="text"
-                  name="category"
-                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200"
-                  required
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  placeholder="Enter category (e.g., Shopee, Bank BCA, Gojek, etc.)"
-                />
+                <div className="relative" ref={categoryDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsCategoryOpen(!isCategoryOpen)}
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200 flex items-center justify-between bg-white hover:bg-gray-50"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className={formData.category ? 'text-gray-900' : 'text-gray-400'}>
+                        {formData.category || 'Select category'}
+                      </span>
+                    </span>
+                    <FiChevronDown className={`text-gray-600 transition-transform duration-200 ${isCategoryOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isCategoryOpen && (
+                    <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-96 overflow-y-auto">
+                      {CATEGORIES.map((category, idx) => (
+                        <div key={idx}>
+                          {/* Main Category */}
+                          <button
+                            type="button"
+                            onClick={() => handleCategorySelect(category.name, category.icon)}
+                            className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors duration-150 flex items-center gap-3 border-b border-gray-100"
+                          >
+                            <category.icon className="text-gray-900 text-lg flex-shrink-0" />
+                            <span className="font-semibold text-gray-900">{category.name}</span>
+                            {formData.category === category.name && (
+                              <FiCheck className="ml-auto text-gray-900" />
+                            )}
+                          </button>
+
+                          {/* Subcategories */}
+                          {category.subcategories.map((sub, subIdx) => (
+                            <button
+                              key={subIdx}
+                              type="button"
+                              onClick={() => handleCategorySelect(sub.name, sub.icon)}
+                              className="w-full px-4 py-2.5 pl-12 text-left hover:bg-gray-50 transition-colors duration-150 flex items-center gap-3 text-sm"
+                            >
+                              <sub.icon className="text-gray-600 flex-shrink-0" />
+                              <span className="text-gray-700">{sub.name}</span>
+                              {formData.category === sub.name && (
+                                <FiCheck className="ml-auto text-gray-900" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="mb-5">
                 <label className="block text-gray-700 mb-2 font-semibold text-sm">Amount</label>
