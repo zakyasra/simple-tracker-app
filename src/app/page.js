@@ -771,7 +771,7 @@ const Page = () => {
   }) || [];
 
   return (
-    <div className="bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 min-h-screen pt-8 md:pt-12 pb-20">
+    <div className="bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 min-h-[100dvh] pt-8 md:pt-12 pb-20">
       <div className="max-w-7xl md:mx-auto mx-4 mb-2">
         <h1 className="text-3xl md:text-5xl font-bold text-gray-900 tracking-tight text-left md:text-center">Private Money Tracker</h1>
       </div>
@@ -1055,7 +1055,7 @@ const Page = () => {
                   </button>
 
                   {isCategoryOpen && (
-                    <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-96 overflow-y-auto">
+                    <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-[60vh] overflow-y-auto">
                       {CATEGORIES.map((category, idx) => (
                         <div key={idx}>
                           {/* Main Category */}
