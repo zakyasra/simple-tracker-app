@@ -177,6 +177,12 @@ const Page = () => {
   const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
   const [isCustomRangeOpen, setIsCustomRangeOpen] = useState(false);
   const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
+  const [pieChartFilter, setPieChartFilter] = useState('Pengeluaran'); // Filter for pie chart, default to Expense
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [customFilterRange, setCustomFilterRange] = useState({ start: '', end: '' });
+  const [tempCustomFilterRange, setTempCustomFilterRange] = useState({ start: '', end: '' }); // Temporary state for modal
+  const [isCustomFilterOpen, setIsCustomFilterOpen] = useState(false);
   const barChartRef = useRef(null);
   const lineChartRef = useRef(null);
   const categoryChartRef = useRef(null);
@@ -628,23 +634,29 @@ const Page = () => {
     return () => chart.destroy();
   }, [transaction]);
 
-  // Line Chart: Daily Expense Trend (last 30 days)
+  // Line Chart: Daily Expense Trend (last 7 days)
   useEffect(() => {
     if (!lineChartRef.current) return;
 
-    // Get daily expense data for the last 30 days
+    // Get daily expense data for the last 7 days
     const dailyData = {};
     const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // Initialize all 7 days with 0
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+      const dayKey = date.toISOString().split('T')[0];
+      dailyData[dayKey] = 0;
+    }
 
     transaction?.forEach(item => {
       const date = new Date(item.date);
-      if (date >= thirtyDaysAgo && item.type === 'Pengeluaran') {
+      if (date >= sevenDaysAgo && item.type === 'Pengeluaran') {
         const dayKey = date.toISOString().split('T')[0];
-        if (!dailyData[dayKey]) {
-          dailyData[dayKey] = 0;
+        if (dailyData.hasOwnProperty(dayKey)) {
+          dailyData[dayKey] += Math.abs(item.amount);
         }
-        dailyData[dayKey] += Math.abs(item.amount);
       }
     });
 
@@ -652,51 +664,101 @@ const Page = () => {
     const sortedDays = Object.keys(dailyData).sort();
     const labels = sortedDays.map(key => {
       const date = new Date(key);
-      return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
     });
     const data = sortedDays.map(key => dailyData[key]);
+
+    // Find the highest value index
+    const maxValue = Math.max(...data);
+    const maxIndex = data.indexOf(maxValue);
+
+    // Create point radius array with larger point for max value
+    const pointRadiusArray = data.map((_, index) => index === maxIndex ? 8 : 5);
+    const pointHoverRadiusArray = data.map((_, index) => index === maxIndex ? 10 : 7);
 
     const chart = new Chart(lineChartRef.current, {
       type: 'line',
       data: {
-        labels: labels.length ? labels : ['No Data'],
+        labels: labels,
         datasets: [
           {
             label: 'Pengeluaran',
-            data: data.length ? data : [0],
+            data: data,
             borderColor: 'rgba(239, 68, 68, 1)',
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            backgroundColor: (context) => {
+              const ctx = context.chart.ctx;
+              const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+              gradient.addColorStop(0, 'rgba(239, 68, 68, 0.3)');
+              gradient.addColorStop(0.5, 'rgba(239, 68, 68, 0.15)');
+              gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
+              return gradient;
+            },
             tension: 0.4,
             fill: true,
-            pointRadius: 4,
-            pointBackgroundColor: 'rgba(239, 68, 68, 1)',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2
-          },
-          {
-            label: 'Pemasukan',
-            data: data.length ? data.map(() => 0) : [0],
-            borderColor: 'rgba(16, 185, 129, 1)',
-            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-            tension: 0.4,
-            fill: true,
-            pointRadius: 4,
-            pointBackgroundColor: 'rgba(16, 185, 129, 1)',
-            pointBorderColor: '#fff',
-            pointBorderWidth: 2
+            borderWidth: 3,
+            pointRadius: pointRadiusArray,
+            pointHoverRadius: pointHoverRadiusArray,
+            pointBackgroundColor: (context) => {
+              return context.dataIndex === maxIndex ? 'rgba(239, 68, 68, 1)' : 'rgba(239, 68, 68, 1)';
+            },
+            pointBorderColor: (context) => {
+              return context.dataIndex === maxIndex ? 'rgba(239, 68, 68, 1)' : '#fff';
+            },
+            pointBorderWidth: (context) => {
+              return context.dataIndex === maxIndex ? 0 : 3;
+            },
+            pointHoverBorderWidth: 4,
+            pointStyle: (context) => {
+              if (context.dataIndex === maxIndex) {
+                // Create a custom circle with badge effect
+                const img = new Image(16, 16);
+                return 'circle';
+              }
+              return 'circle';
+            }
           }
         ]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
         plugins: {
           legend: {
             display: true,
             position: 'bottom',
             labels: {
               usePointStyle: true,
-              padding: 15
+              padding: 15,
+              font: {
+                size: 12,
+                weight: '500'
+              }
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            padding: 12,
+            cornerRadius: 8,
+            titleFont: {
+              size: 13,
+              weight: 'bold'
+            },
+            bodyFont: {
+              size: 12
+            },
+            displayColors: true,
+            callbacks: {
+              label: function (context) {
+                let label = 'Rp ' + context.parsed.y.toLocaleString();
+                if (context.dataIndex === maxIndex) {
+                  label += ' (Highest)';
+                }
+                return label;
+              }
             }
           }
         },
@@ -705,12 +767,40 @@ const Page = () => {
             beginAtZero: true,
             grid: {
               display: true,
-              color: 'rgba(0, 0, 0, 0.05)'
+              color: 'rgba(0, 0, 0, 0.05)',
+              drawBorder: false
+            },
+            border: {
+              display: false
+            },
+            ticks: {
+              padding: 10,
+              font: {
+                size: 11
+              },
+              callback: function (value) {
+                if (value >= 1000000) {
+                  return (value / 1000000).toFixed(1) + 'M';
+                } else if (value >= 1000) {
+                  return (value / 1000).toFixed(0) + 'K';
+                }
+                return value;
+              }
             }
           },
           x: {
             grid: {
+              display: false,
+              drawBorder: false
+            },
+            border: {
               display: false
+            },
+            ticks: {
+              padding: 10,
+              font: {
+                size: 11
+              }
             }
           }
         }
@@ -727,9 +817,16 @@ const Page = () => {
     // Destroy existing chart if any
     Chart.getChart(categoryChartRef.current)?.destroy();
 
+    // Filter transactions based on selected type
+    const filteredTransactions = transaction?.filter(item => {
+      if (pieChartFilter === 'Pemasukan') return item.type === 'Pemasukan';
+      if (pieChartFilter === 'Pengeluaran') return item.type === 'Pengeluaran';
+      return true;
+    }) || [];
+
     // Aggregate by category
     const categoryData = {};
-    transaction?.forEach(item => {
+    filteredTransactions.forEach(item => {
       if (!categoryData[item.category]) {
         categoryData[item.category] = 0;
       }
@@ -813,7 +910,7 @@ const Page = () => {
     });
 
     return () => chart.destroy();
-  }, [transaction]);
+  }, [transaction, pieChartFilter]);
 
   // Calculate financial summary
   const totalIncome = transaction
@@ -826,12 +923,34 @@ const Page = () => {
 
   const balance = totalIncome - totalExpense;
 
-  // Filter transactions based on selected type
+  // Filter transactions based on selected type, search query, and date range
   const filteredTransactions = transaction?.filter(item => {
-    if (filterType === 'Semua') return true;
-    if (filterType === 'Masuk') return item.type === 'Pemasukan';
-    if (filterType === 'Keluar') return item.type === 'Pengeluaran';
-    return true;
+    // Filter by type
+    let typeMatch = true;
+    if (filterType === 'Masuk') typeMatch = item.type === 'Pemasukan';
+    else if (filterType === 'Keluar') typeMatch = item.type === 'Pengeluaran';
+
+    // Filter by search query (description)
+    const searchMatch = item.description.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // Filter by date range
+    let dateMatch = true;
+    const itemDate = new Date(item.date);
+    const now = new Date();
+
+    if (dateFilter === 'last7days') {
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      dateMatch = itemDate >= sevenDaysAgo && itemDate <= now;
+    } else if (dateFilter === 'last30days') {
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      dateMatch = itemDate >= thirtyDaysAgo && itemDate <= now;
+    } else if (dateFilter === 'custom' && customFilterRange.start && customFilterRange.end) {
+      const startDate = new Date(customFilterRange.start);
+      const endDate = new Date(customFilterRange.end);
+      dateMatch = itemDate >= startDate && itemDate <= endDate;
+    }
+
+    return typeMatch && searchMatch && dateMatch;
   }) || [];
 
   return (
@@ -924,6 +1043,19 @@ const Page = () => {
                 <FiPieChart className="text-gray-900 text-2xl" />
               </div>
             </div>
+
+            {/* Filter Dropdown for Pie Chart */}
+            <div className="mb-4">
+              <select
+                value={pieChartFilter}
+                onChange={(e) => setPieChartFilter(e.target.value)}
+                className="w-full p-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200 cursor-pointer bg-white"
+              >
+                <option value="Pengeluaran">Expense Only</option>
+                <option value="Pemasukan">Income Only</option>
+              </select>
+            </div>
+
             <div style={{ height: '320px' }}>
               <canvas ref={categoryChartRef}></canvas>
             </div>
@@ -1007,38 +1139,82 @@ const Page = () => {
           </div>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex gap-2 mb-8 bg-gray-50 p-1.5 rounded-xl w-full md:w-fit border border-gray-200">
-          <button
-            onClick={() => setFilterType('Semua')}
-            className={`flex-1 md:flex-none px-4 md:px-8 py-2.5 md:py-3 rounded-lg transition-all duration-200 text-xs md:text-sm font-semibold ${filterType === 'Semua'
-              ? 'bg-gray-900 text-white shadow-md'
-              : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-              }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => setFilterType('Masuk')}
-            className={`flex-1 md:flex-none px-4 md:px-8 py-2.5 md:py-3 rounded-lg transition-all duration-200 text-xs md:text-sm font-semibold ${filterType === 'Masuk'
-              ? 'bg-gray-900 text-white shadow-md'
-              : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-              }`}
-          >
-            Income
-          </button>
-          <button
-            onClick={() => setFilterType('Keluar')}
-            className={`flex-1 md:flex-none px-4 md:px-8 py-2.5 md:py-3 rounded-lg transition-all duration-200 text-xs md:text-sm font-semibold ${filterType === 'Keluar'
-              ? 'bg-gray-900 text-white shadow-md'
-              : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-              }`}
-          >
-            Expense
-          </button>
+        {/* Filter Section - Tabs and Search/Date in one row for desktop */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+          {/* Filter Tabs - Left side on desktop */}
+          <div className="flex gap-2 bg-gray-50 p-1.5 rounded-xl w-full md:w-fit border border-gray-200">
+            <button
+              onClick={() => setFilterType('Semua')}
+              className={`flex-1 md:flex-none px-4 md:px-8 py-2.5 md:py-3 rounded-lg transition-all duration-200 text-xs md:text-sm font-semibold ${filterType === 'Semua'
+                ? 'bg-gray-900 text-white shadow-md'
+                : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setFilterType('Masuk')}
+              className={`flex-1 md:flex-none px-4 md:px-8 py-2.5 md:py-3 rounded-lg transition-all duration-200 text-xs md:text-sm font-semibold ${filterType === 'Masuk'
+                ? 'bg-gray-900 text-white shadow-md'
+                : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+            >
+              Income
+            </button>
+            <button
+              onClick={() => setFilterType('Keluar')}
+              className={`flex-1 md:flex-none px-4 md:px-8 py-2.5 md:py-3 rounded-lg transition-all duration-200 text-xs md:text-sm font-semibold ${filterType === 'Keluar'
+                ? 'bg-gray-900 text-white shadow-md'
+                : 'bg-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+            >
+              Expense
+            </button>
+          </div>
+
+          {/* Search and Date Filter - Right side on desktop */}
+          <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto md:flex-1 md:max-w-2xl">
+            {/* Search Input - 3/4 width */}
+            <div className="flex-1 md:flex-[3]">
+              <input
+                type="text"
+                placeholder="Search by description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200 text-sm"
+              />
+            </div>
+
+            {/* Date Range Filter - 1/4 width */}
+            <div className="flex-1 md:flex-[1] md:min-w-[200px]">
+              <select
+                value={dateFilter}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setDateFilter(value);
+                  if (value === 'custom') {
+                    setIsCustomFilterOpen(true);
+                  } else {
+                    setCustomFilterRange({ start: '', end: '' });
+                  }
+                }}
+                className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200 text-sm cursor-pointer"
+              >
+                <option value="all">All Dates</option>
+                <option value="last7days">Last 7 Days</option>
+                <option value="last30days">Last 30 Days</option>
+                <option value="custom">
+                  {dateFilter === 'custom' && customFilterRange.start && customFilterRange.end
+                    ? `${customFilterRange.start} - ${customFilterRange.end}`
+                    : 'Custom Range'}
+                </option>
+              </select>
+            </div>
+          </div>
         </div>
 
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200">
           <table className='w-full text-sm text-left'>
             <thead className='bg-gray-50 border-b border-gray-200'>
               <tr>
@@ -1056,7 +1232,11 @@ const Page = () => {
                 filteredTransactions?.map((item, index) => (
                   <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors duration-150">
                     <td className="px-6 py-4 text-gray-500 font-medium">{index + 1}</td>
-                    <td className="px-6 py-4 text-gray-900 font-medium">{item.description}</td>
+                    <td className="px-6 py-4 text-gray-900 font-medium">
+                      <div className="max-w-xs truncate" title={item.description}>
+                        {item.description}
+                      </div>
+                    </td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${item.type === 'Pemasukan'
                         ? 'bg-gray-100 text-gray-900'
@@ -1091,6 +1271,69 @@ const Page = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4">
+          {filteredTransactions?.length ? (
+            filteredTransactions?.map((item, index) => (
+              <div key={index} className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200">
+                <div className="grid grid-cols-[120px_1fr] text-sm">
+                  {/* Row 1: Number */}
+                  <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 font-semibold text-gray-600 text-xs uppercase">#</div>
+                  <div className="px-4 py-3 border-b border-gray-200 text-gray-500 font-medium">{index + 1}</div>
+
+                  {/* Row 2: Description */}
+                  <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 font-semibold text-gray-600 text-xs uppercase">Description</div>
+                  <div className="px-4 py-3 border-b border-gray-200 text-gray-900 font-medium" title={item.description}>
+                    {item.description}
+                  </div>
+
+                  {/* Row 3: Type */}
+                  <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 font-semibold text-gray-600 text-xs uppercase">Type</div>
+                  <div className="px-4 py-3 border-b border-gray-200">
+                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ${item.type === 'Pemasukan'
+                      ? 'bg-gray-100 text-gray-900'
+                      : 'bg-gray-900 text-white'
+                      }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${item.type === 'Pemasukan' ? 'bg-gray-900' : 'bg-white'
+                        }`}></span>
+                      {item.type === 'Pemasukan' ? 'Income' : 'Expense'}
+                    </span>
+                  </div>
+
+                  {/* Row 4: Category */}
+                  <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 font-semibold text-gray-600 text-xs uppercase">Category</div>
+                  <div className="px-4 py-3 border-b border-gray-200 text-gray-700">{item.category}</div>
+
+                  {/* Row 5: Amount */}
+                  <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 font-semibold text-gray-600 text-xs uppercase">Amount</div>
+                  <div className="px-4 py-3 border-b border-gray-200 text-gray-900 font-semibold">Rp {Math.abs(item.amount).toLocaleString()}</div>
+
+                  {/* Row 6: Date */}
+                  <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 font-semibold text-gray-600 text-xs uppercase">Date</div>
+                  <div className="px-4 py-3 border-b border-gray-200 text-gray-500">{new Date(item.date).toLocaleDateString()}</div>
+
+                  {/* Row 7: Actions */}
+                  <div className="bg-gray-50 px-4 py-3 font-semibold text-gray-600 text-xs uppercase">Actions</div>
+                  <div className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <button className="text-gray-700 cursor-pointer bg-gray-100 hover:bg-gray-200 py-2 px-4 rounded-lg text-xs font-medium transition-colors duration-200" onClick={() => handleEdit(item.id)}>Edit</button>
+                      <button className="text-white cursor-pointer bg-gray-900 hover:bg-gray-800 py-2 px-4 rounded-lg text-xs font-medium transition-colors duration-200" onClick={() => handleDelete(item.id)}>Delete</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 py-12 text-center text-gray-500">
+              <div className="flex flex-col items-center">
+                <FiInbox className="text-5xl mb-3 text-gray-400" />
+                <p className="font-medium">No transactions yet</p>
+                <p className="text-sm">Start by adding your first transaction</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1273,7 +1516,7 @@ const Page = () => {
         </div>
       )}
 
-      {/* Custom Date Range Modal */}
+      {/* Custom Date Range Modal for Export */}
       {isCustomRangeOpen && (
         <div className="fixed inset-0 z-50">
           {/* Overlay */}
@@ -1324,6 +1567,86 @@ const Page = () => {
                   className="flex-1 bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 transition-all duration-200 cursor-pointer shadow-lg"
                 >
                   Export
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Date Range Modal for Filter */}
+      {isCustomFilterOpen && (
+        <div className="fixed inset-0 z-50">
+          {/* Overlay */}
+          <div
+            className="absolute inset-0 bg-black opacity-75"
+            onClick={() => {
+              setIsCustomFilterOpen(false);
+              setTempCustomFilterRange({ start: '', end: '' });
+            }}
+          ></div>
+
+          <div className="relative flex items-center justify-center h-full px-4">
+            <div className="bg-white p-8 rounded-2xl w-full max-w-md shadow-2xl">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Custom Date Range</h3>
+              <p className="text-sm text-gray-500 mb-6">Select the date range to filter transactions</p>
+
+              <div className="mb-5">
+                <label className="block text-gray-700 mb-2 font-semibold text-sm">Start Date</label>
+                <input
+                  type="date"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200"
+                  value={tempCustomFilterRange.start}
+                  onChange={(e) => setTempCustomFilterRange({ ...tempCustomFilterRange, start: e.target.value })}
+                />
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-gray-700 mb-2 font-semibold text-sm">End Date</label>
+                <input
+                  type="date"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200"
+                  value={tempCustomFilterRange.end}
+                  onChange={(e) => setTempCustomFilterRange({ ...tempCustomFilterRange, end: e.target.value })}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustomFilterOpen(false);
+                    setDateFilter('all');
+                    setTempCustomFilterRange({ start: '', end: '' });
+                  }}
+                  className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-all duration-200 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!tempCustomFilterRange.start || !tempCustomFilterRange.end) {
+                      toast.error("Please select both start and end dates!", {
+                        position: "top-center",
+                      });
+                      return;
+                    }
+                    const startDate = new Date(tempCustomFilterRange.start);
+                    const endDate = new Date(tempCustomFilterRange.end);
+                    if (startDate > endDate) {
+                      toast.error("Start date must be before end date!", {
+                        position: "top-center",
+                      });
+                      return;
+                    }
+                    // Apply the filter
+                    setCustomFilterRange(tempCustomFilterRange);
+                    setIsCustomFilterOpen(false);
+                  }}
+                  className="flex-1 bg-gray-900 text-white px-6 py-3 rounded-xl font-semibold hover:bg-gray-800 transition-all duration-200 cursor-pointer shadow-lg"
+                >
+                  Apply Filter
                 </button>
               </div>
             </div>
