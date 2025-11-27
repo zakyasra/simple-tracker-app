@@ -1,11 +1,14 @@
 "use client";
 
 import { useTransactionStore } from '@/hooks/useTransaction';
-import { CategoryScale, Chart, LinearScale, BarElement, PointElement, LineElement, ArcElement, Tooltip, Legend, BarController, LineController, PieController } from 'chart.js';
 import * as XLSX from 'xlsx';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
-import { FiTrendingUp, FiTrendingDown, FiDollarSign, FiBarChart2, FiPieChart, FiActivity, FiInbox, FiDownload, FiUpload, FiChevronDown, FiCheck, FiFilm, FiMusic } from 'react-icons/fi';
+import { FiInbox, FiDownload, FiUpload, FiChevronDown, FiCheck, FiFilm, FiMusic } from 'react-icons/fi';
+import FinancialSummaryCards from '@/components/FinancialSummaryCards';
+import BarChart from '@/components/BarChart';
+import LineChart from '@/components/LineChart';
+import PieChart from '@/components/PieChart';
 import {
   FaMoneyBillWave, FaBriefcase, FaLaptopCode, FaChartLine, FaBitcoin,
   FaUtensils, FaCoffee, FaCookie, FaShoppingCart,
@@ -21,21 +24,6 @@ import {
   FaPiggyBank
 } from 'react-icons/fa';
 
-// Register components needed for Bar and Line charts
-Chart.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  PointElement,
-  LineElement,
-  ArcElement,
-  Tooltip,
-  Legend,
-  BarController,
-  LineController,
-  PieController
-);
-
 // Categories data structure
 const CATEGORIES = [
   {
@@ -44,6 +32,7 @@ const CATEGORIES = [
     subcategories: [
       { name: 'Monthly Salary', icon: FaBriefcase },
       { name: 'Overtime Pay', icon: FaBriefcase },
+      { name: 'Side Income', icon: FaMoneyBillWave },
       { name: 'Freelance', icon: FaLaptopCode },
       { name: 'Affiliate', icon: FaChartLine },
       { name: 'Stock Profit', icon: FaChartLine },
@@ -183,9 +172,6 @@ const Page = () => {
   const [customFilterRange, setCustomFilterRange] = useState({ start: '', end: '' });
   const [tempCustomFilterRange, setTempCustomFilterRange] = useState({ start: '', end: '' }); // Temporary state for modal
   const [isCustomFilterOpen, setIsCustomFilterOpen] = useState(false);
-  const barChartRef = useRef(null);
-  const lineChartRef = useRef(null);
-  const categoryChartRef = useRef(null);
   const categoryDropdownRef = useRef(null);
   const exportDropdownRef = useRef(null);
 
@@ -542,377 +528,6 @@ const Page = () => {
     event.target.value = '';
   }
 
-  // Bar Chart: Income vs Expense per Month (last 12 months)
-  useEffect(() => {
-    if (!barChartRef.current) return;
-
-    // Get monthly data for the last 12 months
-    const monthlyData = {};
-    const now = new Date();
-
-    transaction?.forEach(item => {
-      const date = new Date(item.date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-
-      if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { income: 0, expense: 0 };
-      }
-
-      if (item.type === 'Pemasukan') {
-        monthlyData[monthKey].income += item.amount;
-      } else {
-        monthlyData[monthKey].expense += Math.abs(item.amount);
-      }
-    });
-
-    // Sort by date and get labels
-    const sortedMonths = Object.keys(monthlyData).sort();
-    const labels = sortedMonths.map(key => {
-      const [year, month] = key.split('-');
-      const date = new Date(year, month - 1);
-      return date.toLocaleDateString('id-ID', { month: 'short', year: 'numeric' });
-    });
-
-    const incomeData = sortedMonths.map(key => monthlyData[key].income);
-    const expenseData = sortedMonths.map(key => monthlyData[key].expense);
-
-    const chart = new Chart(barChartRef.current, {
-      type: 'bar',
-      data: {
-        labels: labels.length ? labels : ['No Data'],
-        datasets: [
-          {
-            label: 'Pengeluaran',
-            data: expenseData.length ? expenseData : [0],
-            backgroundColor: 'rgba(239, 68, 68, 0.8)',
-            borderColor: 'rgba(239, 68, 68, 1)',
-            borderWidth: 1,
-            borderRadius: 8,
-            borderSkipped: false
-          },
-          {
-            label: 'Pemasukan',
-            data: incomeData.length ? incomeData : [0],
-            backgroundColor: 'rgba(59, 130, 246, 0.8)',
-            borderColor: 'rgba(59, 130, 246, 1)',
-            borderWidth: 1,
-            borderRadius: 8,
-            borderSkipped: false
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: true,
-            position: 'bottom',
-            labels: {
-              usePointStyle: true,
-              padding: 15
-            }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            grid: {
-              display: true,
-              color: 'rgba(0, 0, 0, 0.05)'
-            }
-          },
-          x: {
-            grid: {
-              display: false
-            }
-          }
-        }
-      }
-    });
-
-    return () => chart.destroy();
-  }, [transaction]);
-
-  // Line Chart: Daily Expense Trend (last 7 days)
-  useEffect(() => {
-    if (!lineChartRef.current) return;
-
-    // Get daily expense data for the last 7 days
-    const dailyData = {};
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-    // Initialize all 7 days with 0
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      const dayKey = date.toISOString().split('T')[0];
-      dailyData[dayKey] = 0;
-    }
-
-    transaction?.forEach(item => {
-      const date = new Date(item.date);
-      if (date >= sevenDaysAgo && item.type === 'Pengeluaran') {
-        const dayKey = date.toISOString().split('T')[0];
-        if (dailyData.hasOwnProperty(dayKey)) {
-          dailyData[dayKey] += Math.abs(item.amount);
-        }
-      }
-    });
-
-    // Sort by date
-    const sortedDays = Object.keys(dailyData).sort();
-    const labels = sortedDays.map(key => {
-      const date = new Date(key);
-      return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
-    });
-    const data = sortedDays.map(key => dailyData[key]);
-
-    // Find the highest value index
-    const maxValue = Math.max(...data);
-    const maxIndex = data.indexOf(maxValue);
-
-    // Create point radius array with larger point for max value
-    const pointRadiusArray = data.map((_, index) => index === maxIndex ? 8 : 5);
-    const pointHoverRadiusArray = data.map((_, index) => index === maxIndex ? 10 : 7);
-
-    const chart = new Chart(lineChartRef.current, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: 'Pengeluaran',
-            data: data,
-            borderColor: 'rgba(239, 68, 68, 1)',
-            backgroundColor: (context) => {
-              const ctx = context.chart.ctx;
-              const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-              gradient.addColorStop(0, 'rgba(239, 68, 68, 0.3)');
-              gradient.addColorStop(0.5, 'rgba(239, 68, 68, 0.15)');
-              gradient.addColorStop(1, 'rgba(239, 68, 68, 0)');
-              return gradient;
-            },
-            tension: 0.4,
-            fill: true,
-            borderWidth: 3,
-            pointRadius: pointRadiusArray,
-            pointHoverRadius: pointHoverRadiusArray,
-            pointBackgroundColor: (context) => {
-              return context.dataIndex === maxIndex ? 'rgba(239, 68, 68, 1)' : 'rgba(239, 68, 68, 1)';
-            },
-            pointBorderColor: (context) => {
-              return context.dataIndex === maxIndex ? 'rgba(239, 68, 68, 1)' : '#fff';
-            },
-            pointBorderWidth: (context) => {
-              return context.dataIndex === maxIndex ? 0 : 3;
-            },
-            pointHoverBorderWidth: 4,
-            pointStyle: (context) => {
-              if (context.dataIndex === maxIndex) {
-                // Create a custom circle with badge effect
-                const img = new Image(16, 16);
-                return 'circle';
-              }
-              return 'circle';
-            }
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: {
-          mode: 'index',
-          intersect: false,
-        },
-        plugins: {
-          legend: {
-            display: true,
-            position: 'bottom',
-            labels: {
-              usePointStyle: true,
-              padding: 15,
-              font: {
-                size: 12,
-                weight: '500'
-              }
-            }
-          },
-          tooltip: {
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            padding: 12,
-            cornerRadius: 8,
-            titleFont: {
-              size: 13,
-              weight: 'bold'
-            },
-            bodyFont: {
-              size: 12
-            },
-            displayColors: true,
-            callbacks: {
-              label: function (context) {
-                let label = 'Rp ' + context.parsed.y.toLocaleString();
-                if (context.dataIndex === maxIndex) {
-                  label += ' (Highest)';
-                }
-                return label;
-              }
-            }
-          }
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            grid: {
-              display: true,
-              color: 'rgba(0, 0, 0, 0.05)',
-              drawBorder: false
-            },
-            border: {
-              display: false
-            },
-            ticks: {
-              padding: 10,
-              font: {
-                size: 11
-              },
-              callback: function (value) {
-                if (value >= 1000000) {
-                  return (value / 1000000).toFixed(1) + 'M';
-                } else if (value >= 1000) {
-                  return (value / 1000).toFixed(0) + 'K';
-                }
-                return value;
-              }
-            }
-          },
-          x: {
-            grid: {
-              display: false,
-              drawBorder: false
-            },
-            border: {
-              display: false
-            },
-            ticks: {
-              padding: 10,
-              font: {
-                size: 11
-              }
-            }
-          }
-        }
-      }
-    });
-
-    return () => chart.destroy();
-  }, [transaction]);
-
-  // Pie Chart: Top 5 Categories
-  useEffect(() => {
-    if (!categoryChartRef.current) return;
-
-    // Destroy existing chart if any
-    Chart.getChart(categoryChartRef.current)?.destroy();
-
-    // Filter transactions based on selected type
-    const filteredTransactions = transaction?.filter(item => {
-      if (pieChartFilter === 'Pemasukan') return item.type === 'Pemasukan';
-      if (pieChartFilter === 'Pengeluaran') return item.type === 'Pengeluaran';
-      return true;
-    }) || [];
-
-    // Aggregate by category
-    const categoryData = {};
-    filteredTransactions.forEach(item => {
-      if (!categoryData[item.category]) {
-        categoryData[item.category] = 0;
-      }
-      categoryData[item.category] += Math.abs(item.amount);
-    });
-
-    // Calculate total
-    const total = Object.values(categoryData).reduce((sum, val) => sum + val, 0);
-
-    // Sort and get top 5
-    const sortedCategories = Object.entries(categoryData)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
-
-    const labels = sortedCategories.map(([category]) => category);
-    const percentages = sortedCategories.map(([, amount]) => total > 0 ? (amount / total) * 100 : 0);
-
-    const chart = new Chart(categoryChartRef.current, {
-      type: 'pie',
-      data: {
-        labels: labels.length ? labels : ['No Data'],
-        datasets: [
-          {
-            data: percentages.length ? percentages : [100],
-            backgroundColor: [
-              'rgba(16, 185, 129, 0.8)',
-              'rgba(239, 68, 68, 0.8)',
-              'rgba(59, 130, 246, 0.8)',
-              'rgba(251, 191, 36, 0.8)',
-              'rgba(139, 92, 246, 0.8)'
-            ],
-            borderColor: [
-              'rgba(16, 185, 129, 1)',
-              'rgba(239, 68, 68, 1)',
-              'rgba(59, 130, 246, 1)',
-              'rgba(251, 191, 36, 1)',
-              'rgba(139, 92, 246, 1)'
-            ],
-            borderWidth: 2
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: true,
-            position: 'right',
-            labels: {
-              usePointStyle: true,
-              padding: 15,
-              generateLabels: function (chart) {
-                const data = chart.data;
-                if (data.labels.length && data.datasets.length) {
-                  return data.labels.map((label, i) => {
-                    const value = data.datasets[0].data[i];
-                    return {
-                      text: `${label}: ${value.toFixed(1)}%`,
-                      fillStyle: data.datasets[0].backgroundColor[i],
-                      hidden: false,
-                      index: i
-                    };
-                  });
-                }
-                return [];
-              }
-            }
-          },
-          tooltip: {
-            callbacks: {
-              label: function (context) {
-                const label = context.label || '';
-                const value = context.parsed;
-                return `${label}: ${value.toFixed(1)}%`;
-              }
-            }
-          }
-        }
-      }
-    });
-
-    return () => chart.destroy();
-  }, [transaction, pieChartFilter]);
-
-  // Calculate financial summary
   const totalIncome = transaction
     ?.filter(item => item.type === 'Pemasukan')
     .reduce((sum, item) => sum + item.amount, 0) || 0;
@@ -964,120 +579,37 @@ const Page = () => {
 
       {/* Financial Summary Cards */}
       <div className="max-w-7xl md:mx-auto mx-4 mt-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {/* Total Income Card */}
-          <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">Total Income</p>
-              <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center">
-                <FiTrendingUp className="text-white text-xl" />
-              </div>
-            </div>
-            <p className="text-4xl font-bold text-gray-900 mb-2">Rp {totalIncome.toLocaleString()}</p>
-            <div className="flex items-center gap-2">
-              <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium">Revenue</span>
-            </div>
-          </div>
-
-          {/* Total Expense Card */}
-          <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-gray-500 text-xs uppercase tracking-wider font-medium">Total Expense</p>
-              <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center">
-                <FiTrendingDown className="text-white text-xl" />
-              </div>
-            </div>
-            <p className="text-4xl font-bold text-gray-900 mb-2">Rp {totalExpense.toLocaleString()}</p>
-            <div className="flex items-center gap-2">
-              <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 text-xs rounded-full font-medium">Spending</span>
-            </div>
-          </div>
-
-          {/* Balance Card */}
-          <div className="bg-gradient-to-br from-gray-900 to-gray-800 p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-white text-xs uppercase tracking-wider font-medium">Net Balance</p>
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                <FiDollarSign className="text-gray-900 text-xl" />
-              </div>
-            </div>
-            <p className="text-4xl font-bold mb-2 text-white">
-              Rp {balance.toLocaleString()}
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="inline-block px-3 py-1 bg-white text-gray-900 text-xs rounded-full font-medium">
-                {balance >= 0 ? 'Profit' : 'Loss'}
-              </span>
-            </div>
-          </div>
-        </div>
+        <FinancialSummaryCards
+          totalIncome={totalIncome}
+          totalExpense={totalExpense}
+          balance={balance}
+        />
       </div>
 
       {/* Charts Section */}
       <div className="max-w-7xl md:mx-auto mx-4 mt-8 mb-12">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:grid-rows-1">
           {/* Bar Chart: Income vs Expense - Takes 2 columns */}
-          <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 lg:col-span-2 hover:shadow-xl transition-all duration-300">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">Profit Analysis</h3>
-                <p className="text-sm text-gray-500">Comparison of capital and sales per item</p>
-              </div>
-              <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center">
-                <FiBarChart2 className="text-gray-900 text-2xl" />
-              </div>
-            </div>
-            <div style={{ height: '320px' }}>
-              <canvas ref={barChartRef}></canvas>
-            </div>
+          <div className="lg:col-span-2 flex">
+            <BarChart transaction={transaction} />
           </div>
 
           {/* Pie Chart: Distribution - Takes 1 column */}
-          <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">Distribution</h3>
-                <p className="text-sm text-gray-500">Transaction breakdown</p>
-              </div>
-              <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center">
-                <FiPieChart className="text-gray-900 text-2xl" />
-              </div>
-            </div>
-
-            {/* Filter Dropdown for Pie Chart */}
-            <div className="mb-4">
-              <select
-                value={pieChartFilter}
-                onChange={(e) => setPieChartFilter(e.target.value)}
-                className="w-full p-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200 cursor-pointer bg-white"
-              >
-                <option value="Pengeluaran">Expense Only</option>
-                <option value="Pemasukan">Income Only</option>
-              </select>
-            </div>
-
-            <div style={{ height: '320px' }}>
-              <canvas ref={categoryChartRef}></canvas>
-            </div>
-          </div>
-
-          {/* Line Chart: Daily Trend - Takes full width */}
-          <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 lg:col-span-3 hover:shadow-xl transition-all duration-300">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-1">7-Day Trend</h3>
-                <p className="text-sm text-gray-500">Daily transaction monitoring</p>
-              </div>
-              <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center">
-                <FiActivity className="text-gray-900 text-2xl" />
-              </div>
-            </div>
-            <div style={{ height: '320px' }}>
-              <canvas ref={lineChartRef}></canvas>
-            </div>
+          <div className="flex">
+            <PieChart
+              transaction={transaction}
+              pieChartFilter={pieChartFilter}
+              setPieChartFilter={setPieChartFilter}
+            />
           </div>
         </div>
       </div>
+
+      {/* Line Chart */}
+      <div className="max-w-7xl md:mx-auto mx-4 mb-12">
+        <LineChart transaction={transaction} />
+      </div>
+
       <div className="mt-8 max-w-7xl md:mx-auto mx-4 bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-gray-100">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
           <div>
